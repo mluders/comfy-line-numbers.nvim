@@ -1,0 +1,20 @@
+==============================================================================
+                                                        *plugin-template.nvim*
+
+This plugin is a template for writing Neovim plugins.
+
+                                                     *plugin-template.hello()*
+plugin-template.hello()
+
+  Print a greeting to the user.
+  >
+  > plugin-template.hello()
+<
+  TODO: Only the "n"ormal mode is currently supported.
+
+                                                   *plugin-template._greetings
+plugin-template._greetings
+
+  A table of greetings that can be used by the |plugin-template.hello()|
+
+vim:tw=78:ts=2:ft=help:norl:

@@ -1,0 +1,2 @@
+plugin-template.hello()	plugin-template.txt	/*plugin-template.hello()*
+plugin-template.nvim	plugin-template.txt	/*plugin-template.nvim*
