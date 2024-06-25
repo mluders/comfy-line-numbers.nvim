@@ -66,15 +66,15 @@ local function place_signs()
     label = M.config.labels[i]
 
     if current_line - i > 0 then
-      vim.cmd([[sign place ]] .. current_id .. [[ line=]] .. current_line - i .. [[ name=comfy-]] .. label .. [[ group=comfy file=]] .. current_file)
+      vim.cmd([[sign place ]] .. current_id .. [[ line=]] .. current_line - i .. [[ name=comfy-]] .. label .. [[ group=comfy]])
       current_id = current_id + 1
     end
 
-    vim.cmd([[sign place ]] .. current_id .. [[ line=]] .. current_line + i .. [[ name=comfy-]] .. label .. [[ group=comfy file=]] .. current_file)
+    vim.cmd([[sign place ]] .. current_id .. [[ line=]] .. current_line + i .. [[ name=comfy-]] .. label .. [[ group=comfy]])
     current_id = current_id + 1
   end
 
-  vim.cmd([[sign place ]] .. current_id .. [[ line=]] .. current_line .. [[ name=comfy-current-line group=comfy file=]] .. current_file)
+  vim.cmd([[sign place ]] .. current_id .. [[ line=]] .. current_line .. [[ name=comfy-current-line group=comfy]])
 end
 
 vim.api.nvim_create_autocmd({ 'BufEnter', 'CursorMoved', 'CursorMovedI' }, {
