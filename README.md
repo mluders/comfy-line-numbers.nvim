@@ -33,13 +33,13 @@ Represent line numbers using left-hand digits:
 ...\
 55
 
-This makes it easier to type j/k with your right hand.
+This lets your left hand focus on digits, while your right hand focuses on `j` and `k`.
 
 Less movement. More comfort.
 
 # How it works
 
-1. Relative line numbers are displayed in the sign column (with right-hand digits omitted).
+1. Relative line numbers are displayed using statuscolumn (with right-hand digits omitted).
 
 2. Vertical motions are re-mapped to their original meanings:
     * `11j` becomes `6j`
@@ -57,18 +57,17 @@ return {
 }
 ```
 
-I'd also recommend turning off line numbers:
+Make sure line numbers are enabled:
 
 ```lua
-vim.opt.number = false
-vim.opt.relativenumber = false
+vim.opt.number = true
 ```
 
 ## Customization
 
 ```lua
 require('comfy-line-numbers').setup({
-  -- Override the default line numbers with your own list (cannot exceed 2 digits per label):
+  -- Override the default line numbers with your own list:
   -- labels = {
     -- '1',
     -- '2',
@@ -85,9 +84,6 @@ require('comfy-line-numbers').setup({
     -- ...
     -- '55',
   -- }
-  --
-  -- Override the current line label (cannot exceed 2 characters)
-  -- current_line_label = "=>"
   --
   -- Override up/down mappings
   -- up_key = 'j'

@@ -3,11 +3,9 @@
 -- clear the cache with the following command
 -- `:lua package.loaded['plugin-template'] = nil`
 
-local AUTOCMD_GROUP = 'comfy-signs'
-
 local enabled = false
 
-local labels = {
+local DEFAULT_LABELS = {
   '1',
   '2',
   '3',
@@ -42,47 +40,21 @@ local labels = {
 
 local M = {
   config = {
-    labels = labels,
+    labels = DEFAULT_LABELS,
     up_key = 'k',
     down_key ='j',
-    current_line_label = '=>'
   }
 }
 
-local function define_signs()
-  for i=1,99,1 do
-    vim.cmd([[sign define comfy-]] .. i .. [[ text=]] .. i .. [[ texthl=LineNr]])
+-- Defined on the global namespace to be used in Vimscript below.
+_G.get_label = function(n)
+  if n == 0 then
+    return vim.fn.line('.') -- Return current line number when n is 0
+  elseif n > 0 and n <= #M.config.labels then
+    return M.config.labels[n]
+  else
+    return n
   end
-
-  vim.cmd([[sign define comfy-current-line text=]] .. M.config.current_line_label .. [[ texthl=CursorLineNr]])
-end
-
-local function unplace_signs()
-  vim.cmd([[sign unplace * group=comfy]])
-end
-
-local function place_signs()
-  local current_file = vim.fn.expand('%')
-  if current_file == nil or current_file == '' then return end
-
-  unplace_signs()
-
-  local current_line = vim.fn.line('.')
-  local current_id = 1
-
-  for i=1,#M.config.labels,1 do
-    label = M.config.labels[i]
-
-    if current_line - i > 0 then
-      vim.cmd([[sign place ]] .. current_id .. [[ line=]] .. current_line - i .. [[ name=comfy-]] .. label .. [[ group=comfy]])
-      current_id = current_id + 1
-    end
-
-    vim.cmd([[sign place ]] .. current_id .. [[ line=]] .. current_line + i .. [[ name=comfy-]] .. label .. [[ group=comfy]])
-    current_id = current_id + 1
-  end
-
-  vim.cmd([[sign place ]] .. current_id .. [[ line=]] .. current_line .. [[ name=comfy-current-line group=comfy]])
 end
 
 function M.enable_line_numbers()
@@ -95,15 +67,9 @@ function M.enable_line_numbers()
     vim.keymap.set({ 'n', 'v', 'o' }, label .. M.config.down_key, index .. 'j', { noremap = true })
   end
 
-  vim.api.nvim_create_autocmd({ 'BufEnter', 'CursorMoved', 'CursorMovedI' }, {
-    group = vim.api.nvim_create_augroup(AUTOCMD_GROUP, {}),
-    pattern = { '*' },
-    callback = function()
-      place_signs()
-    end
-  })
+  vim.opt.statuscolumn = '%=%s%=%{v:lua.get_label(v:relnum)} '
+  vim.opt.relativenumber = true
 
-  place_signs()
   enabled = true
 end
 
@@ -117,8 +83,9 @@ function M.disable_line_numbers()
     vim.keymap.del({ 'n', 'v', 'o' }, label .. M.config.down_key)
   end
 
-  vim.api.nvim_del_augroup_by_name(AUTOCMD_GROUP)
-  unplace_signs()
+  vim.opt.statuscolumn = ''
+  vim.opt.relativenumber = false
+
   enabled = false
 end
 
@@ -144,8 +111,6 @@ function M.setup(config)
     end,
     { nargs = 1 }
   )
-
-  define_signs()
 
   M.enable_line_numbers()
 end
