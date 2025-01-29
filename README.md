@@ -67,35 +67,20 @@ vim.opt.number = true
 
 ```lua
 require('comfy-line-numbers').setup({
-  -- Override the default line numbers with your own list:
-  -- labels = {
-    -- '1',
-    -- '2',
-    -- '3',
-    -- '4',
-    -- '5',
-    -- '11',
-    -- '12',
-    -- '13',
-    -- '14',
-    -- '15',
-    -- '21',
-    -- '22',
-    -- ...
-    -- '55',
-  -- }
-  --
-  -- Override up/down mappings
-  -- up_key = 'j'
-  -- down_key = 'k'
+  labels = {
+    '1', '2', '3', '4', '5', '11', '12', '13', '14', '15',
+    '21', '22', '23', '24', '25', '31', '32', '33', '34', '35',
+    '41', '42', '43', '44', '45', '51', '52', '53', '54', '55',
+  }
+  up_key = 'j'
+  down_key = 'k'
+  enable_in_terminal = false
 })
 ```
 
 ## Limitations
 
 * Right-hand digits are ommitted by default. This means you can only jump 25 lines in each direction. You can easily add more line numbers by overriding `labels` (see [customization](#customization)).
-* Line numbers cannot exceed 2 digits. The reason is because they're rendered in a single sign column (which is limited to 2 characters).
-* The current line number is rendered as a static string (defaults to `=>`). The reason is the same as above: sign columns are limited to two characters.
 
 ## Testing
 
