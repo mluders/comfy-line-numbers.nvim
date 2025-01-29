@@ -42,7 +42,8 @@ local M = {
   config = {
     labels = DEFAULT_LABELS,
     up_key = 'k',
-    down_key ='j',
+    down_key = 'j',
+    enable_in_terminal = false,
   }
 }
 
@@ -89,6 +90,19 @@ function M.disable_line_numbers()
   enabled = false
 end
 
+function create_auto_commands()
+  local group = vim.api.nvim_create_augroup("ComfyLineNumbers", { clear = true })
+
+  if not M.config.enable_in_terminal then
+    vim.api.nvim_create_autocmd("TermOpen", {
+      group = group,
+      callback = function()
+        vim.cmd("ComfyLineNumber disable")
+      end
+    })
+  end
+end
+
 function M.setup(config)
   M.config = vim.tbl_deep_extend("force", M.config, config or {})
 
@@ -111,6 +125,8 @@ function M.setup(config)
     end,
     { nargs = 1 }
   )
+
+  create_auto_commands()
 
   M.enable_line_numbers()
 end
