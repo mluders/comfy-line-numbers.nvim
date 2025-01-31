@@ -48,23 +48,21 @@ local M = {
 }
 
 -- Defined on the global namespace to be used in Vimscript below.
-_G.get_label = function(n)
-  if n == 0 then
-    return vim.fn.line('.') -- Return current line number when n is 0
-  elseif n > 0 and n <= #M.config.labels then
-    return M.config.labels[n]
-  else
-    return n
+_G.get_label = function(absnum, relnum)
+  if vim.bo.buftype == "terminal" and not M.enable_in_terminal then
+    return ''
   end
-end
 
-function update_status_column()
   if enabled then
-    vim.opt.relativenumber = true
-    vim.opt.statuscolumn = '%=%s%=%{v:lua.get_label(v:relnum)} '
+    if relnum == 0 then
+      return vim.fn.line('.') -- Return current line number when n is 0
+    elseif relnum > 0 and relnum <= #M.config.labels then
+      return M.config.labels[relnum]
+    else
+      return relnum
+    end
   else
-    vim.opt.relativenumber = false
-    vim.opt.statuscolumn = ''
+    return absnum
   end
 end
 
@@ -79,7 +77,7 @@ function M.enable_line_numbers()
   end
 
   enabled = true
-  update_status_column()
+  vim.cmd('mod') -- force redraw
 end
 
 function M.disable_line_numbers()
@@ -94,28 +92,7 @@ function M.disable_line_numbers()
 
 
   enabled = false
-  update_status_column()
-end
-
-function create_auto_commands()
-  local group = vim.api.nvim_create_augroup("ComfyLineNumbers", { clear = true })
-
-  if not M.config.enable_in_terminal then
-    vim.api.nvim_create_autocmd("TermOpen", {
-      group = group,
-      callback = function()
-        vim.cmd("ComfyLineNumber disable")
-      end
-    })
-  end
-
-  vim.api.nvim_create_autocmd("BufEnter", {
-    group = group,
-    pattern = "*",
-    callback = function()
-      update_status_column()
-    end,
-  })
+  vim.cmd('mod') -- force redraw
 end
 
 function M.setup(config)
@@ -141,8 +118,8 @@ function M.setup(config)
     { nargs = 1 }
   )
 
-  create_auto_commands()
-
+  vim.opt.relativenumber = true
+  vim.opt.statuscolumn = '%=%s%=%{v:lua.get_label(v:lnum, v:relnum)} '
   M.enable_line_numbers()
 end
 
