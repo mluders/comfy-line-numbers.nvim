@@ -58,6 +58,16 @@ _G.get_label = function(n)
   end
 end
 
+function update_status_column()
+  if enabled then
+    vim.opt.relativenumber = true
+    vim.opt.statuscolumn = '%=%s%=%{v:lua.get_label(v:relnum)} '
+  else
+    vim.opt.relativenumber = false
+    vim.opt.statuscolumn = ''
+  end
+end
+
 function M.enable_line_numbers()
   if enabled then
     return
@@ -68,10 +78,8 @@ function M.enable_line_numbers()
     vim.keymap.set({ 'n', 'v', 'o' }, label .. M.config.down_key, index .. 'j', { noremap = true })
   end
 
-  vim.opt.statuscolumn = '%=%s%=%{v:lua.get_label(v:relnum)} '
-  vim.opt.relativenumber = true
-
   enabled = true
+  update_status_column()
 end
 
 function M.disable_line_numbers()
@@ -84,10 +92,9 @@ function M.disable_line_numbers()
     vim.keymap.del({ 'n', 'v', 'o' }, label .. M.config.down_key)
   end
 
-  vim.opt.statuscolumn = ''
-  vim.opt.relativenumber = false
 
   enabled = false
+  update_status_column()
 end
 
 function create_auto_commands()
@@ -101,6 +108,14 @@ function create_auto_commands()
       end
     })
   end
+
+  vim.api.nvim_create_autocmd("BufEnter", {
+    group = group,
+    pattern = "*",
+    callback = function()
+      update_status_column()
+    end,
+  })
 end
 
 function M.setup(config)
