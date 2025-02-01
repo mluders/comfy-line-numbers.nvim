@@ -2,7 +2,9 @@
 
 A Neovim plugin that makes vertical motions more comfortable.
 
-# The problem
+![comfy_demo](https://github.com/user-attachments/assets/e59f61f3-a2e7-48be-966a-db7543ed0a82)
+
+## The problem
 
 I love using relative line numbers for vertical movement. But I've noticed a problem...
 
@@ -14,7 +16,7 @@ What do these motions have in common? The right-hand fingers are overloaded, hav
 
 It's too much movement.
 
-# The solution
+## The solution
 
 Represent line numbers using left-hand digits:
 
@@ -37,9 +39,9 @@ This lets your left hand focus on digits, while your right hand focuses on `j` a
 
 Less movement. More comfort.
 
-# How it works
+## How it works
 
-1. Relative line numbers are displayed using statuscolumn (with right-hand digits omitted).
+1. Relative line numbers are displayed in status column (with right-hand digits omitted).
 
 2. Vertical motions are re-mapped to their original meanings:
     * `11j` becomes `6j`
@@ -80,7 +82,7 @@ require('comfy-line-numbers').setup({
 
 ## Limitations
 
-* Right-hand digits are ommitted by default. This means you can only jump 25 lines in each direction. You can easily add more line numbers by overriding `labels` (see [customization](#customization)).
+* When `enable_in_terminal` is false, an empty status column is still visible in the terminal (see [a67c19e](https://github.com/mluders/comfy-line-numbers.nvim/commit/a67c19ea1975674f08678269af85bf388d59b1ef) for more details).
 
 ## Testing
 
