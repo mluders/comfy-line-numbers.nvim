@@ -43,26 +43,48 @@ local M = {
     labels = DEFAULT_LABELS,
     up_key = 'k',
     down_key = 'j',
-    enable_in_terminal = false,
+    hidden_file_types = { 'undotree' },
+    hidden_buffer_types = { 'terminal' }
   }
 }
 
+local should_hide_numbers = function(filetype, buftype)
+  return vim.tbl_contains(M.config.hidden_file_types, filetype) or
+      vim.tbl_contains(M.config.hidden_buffer_types, buftype)
+end
+
 -- Defined on the global namespace to be used in Vimscript below.
 _G.get_label = function(absnum, relnum)
-  if vim.bo.buftype == "terminal" and not M.enable_in_terminal then
-    return ''
+  if not enabled then
+    return absnum
   end
 
-  if enabled then
-    if relnum == 0 then
-      return vim.fn.line('.') -- Return current line number when n is 0
-    elseif relnum > 0 and relnum <= #M.config.labels then
-      return M.config.labels[relnum]
-    else
-      return relnum
-    end
+  if relnum == 0 then
+    return vim.fn.line('.')
+  elseif relnum > 0 and relnum <= #M.config.labels then
+    return M.config.labels[relnum]
   else
     return absnum
+  end
+end
+
+function update_status_column()
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    local buf = vim.api.nvim_win_get_buf(win)
+    local buftype = vim.bo[buf].buftype
+    local filetype = vim.bo[buf].filetype
+
+    if should_hide_numbers(filetype, buftype) then
+      vim.api.nvim_win_call(win, function()
+        vim.opt.statuscolumn = ''
+        vim.cmd('mod') -- force redraw
+      end)
+    else
+      vim.api.nvim_win_call(win, function()
+        vim.opt.statuscolumn = '%=%s%=%{v:lua.get_label(v:lnum, v:relnum)} '
+        vim.cmd('mod') -- force redraw
+      end)
+    end
   end
 end
 
@@ -77,7 +99,7 @@ function M.enable_line_numbers()
   end
 
   enabled = true
-  vim.cmd('mod') -- force redraw
+  update_status_column()
 end
 
 function M.disable_line_numbers()
@@ -92,7 +114,17 @@ function M.disable_line_numbers()
 
 
   enabled = false
-  vim.cmd('mod') -- force redraw
+  update_status_column()
+end
+
+function create_auto_commands()
+  local group = vim.api.nvim_create_augroup("ComfyLineNumbers", { clear = true })
+
+  vim.api.nvim_create_autocmd({ "WinNew", "BufWinEnter", "BufEnter", "TermOpen" }, {
+    group = group,
+    pattern = "*",
+    callback = update_status_column
+  })
 end
 
 function M.setup(config)
@@ -119,7 +151,7 @@ function M.setup(config)
   )
 
   vim.opt.relativenumber = true
-  vim.opt.statuscolumn = '%=%s%=%{v:lua.get_label(v:lnum, v:relnum)} '
+  create_auto_commands()
   M.enable_line_numbers()
 end
 

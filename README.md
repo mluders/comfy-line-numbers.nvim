@@ -59,12 +59,6 @@ return {
 }
 ```
 
-Make sure line numbers are enabled:
-
-```lua
-vim.opt.number = true
-```
-
 ## Customization
 
 ```lua
@@ -76,13 +70,12 @@ require('comfy-line-numbers').setup({
   }
   up_key = 'j'
   down_key = 'k'
-  enable_in_terminal = false
+
+  -- Line numbers will be completely hidden for the following file/buffer types
+  hidden_file_types = { 'undotree' },
+  hidden_buffer_types = { 'terminal' }
 })
 ```
-
-## Limitations
-
-* When `enable_in_terminal` is false, an empty status column is still visible in the terminal (see [a67c19e](https://github.com/mluders/comfy-line-numbers.nvim/commit/a67c19ea1975674f08678269af85bf388d59b1ef) for more details).
 
 ## Testing
 
