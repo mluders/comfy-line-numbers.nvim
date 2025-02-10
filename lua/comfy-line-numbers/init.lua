@@ -60,11 +60,14 @@ _G.get_label = function(absnum, relnum)
   end
 
   if relnum == 0 then
-    return vim.fn.line('.')
+    -- Pad current line number to match width
+    return string.format("%-2d", vim.fn.line ".")
   elseif relnum > 0 and relnum <= #M.config.labels then
-    return M.config.labels[relnum]
+    -- Pad label to consistent width
+    return string.format("%-2s", M.config.labels[relnum])
   else
-    return absnum
+    -- Pad absolute number to consistent width
+    return string.format("%-2d", absnum)
   end
 end
 
