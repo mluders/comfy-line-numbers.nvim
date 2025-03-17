@@ -94,7 +94,7 @@ local M = {
     up_key = 'k',
     down_key = 'j',
     hidden_file_types = { 'undotree' },
-    hidden_buffer_types = { 'terminal' }
+    hidden_buffer_types = { 'terminal', 'nofile' }
   }
 }
 
