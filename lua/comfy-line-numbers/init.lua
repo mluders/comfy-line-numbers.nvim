@@ -130,12 +130,10 @@ function update_status_column()
     if should_hide_numbers(filetype, buftype) then
       vim.api.nvim_win_call(win, function()
         vim.opt.statuscolumn = ''
-        vim.cmd('mod') -- force redraw
       end)
     else
       vim.api.nvim_win_call(win, function()
         vim.opt.statuscolumn = '%=%s%=%{v:lua.get_label(v:lnum, v:relnum)} '
-        vim.cmd('mod') -- force redraw
       end)
     end
   end
