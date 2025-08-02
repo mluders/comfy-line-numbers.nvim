@@ -73,12 +73,12 @@ require('comfy-line-numbers').setup({
     '232', '233', '234', '235', '241', '242', '243', '244', '245', '251',
     '252', '253', '254', '255',
   },
-  up_key = 'j'
-  down_key = 'k'
+  up_key = 'k',
+  down_key = 'j',
 
   -- Line numbers will be completely hidden for the following file/buffer types
   hidden_file_types = { 'undotree' },
-  hidden_buffer_types = { 'terminal' }
+  hidden_buffer_types = { 'terminal', 'nofile' }
 })
 ```
 
