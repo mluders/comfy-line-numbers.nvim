@@ -144,3 +144,5 @@ assert_tables_equal(test7, expected1)
 print "Test7 passed"
 
 print "All tests passed"
+
+return { gen_labels = gen_labels }
