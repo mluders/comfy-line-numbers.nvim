@@ -3,7 +3,7 @@
 
 describe("comfy_line_numbers", function()
   it("can be required", function()
-    require('comfy-line-numbers')
+    require "comfy-line-numbers"
   end)
 
   -- it("should say ", function()
