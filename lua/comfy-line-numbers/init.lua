@@ -5,50 +5,88 @@
 
 local enabled = false
 
--- start: default value is 1, must be a number, in [0,8]
--- end_: default value is 3, must be a number, in [2,9]
--- depth: default value is 3, must be a number, in [1,9]
-function gen_labels(start, end_, depth)
-  local start_num = type(start) == "number" and start or 1
-  local end_num = type(end_) == "number" and end_ or 3
-  local max_depth = type(depth) == "number" and depth or 3
-
-  if start_num < 0 then
-    error "Error: start number must >= 0"
-  end
-  if end_num < start_num then
-    error "Error: end number must < start number"
-  end
-  if max_depth < 1 or max_depth > 9 then
-    error "Error: depth must >= 1 and <= 9"
-  end
-
-  local labels = {}
-  local digits = {}
-
-  -- gen basic number set
-  for i = start_num, end_num do
-    table.insert(digits, tostring(i))
-  end
-
-  local function build(current, length)
-    if length == 0 then
-      table.insert(labels, current)
-      return
-    end
-    for _, d in ipairs(digits) do
-      build(current .. d, length - 1)
-    end
-  end
-
-  for len = 1, max_depth do
-    build("", len)
-  end
-
-  return labels
-end
-
-local DEFAULT_LABELS = gen_labels(1, 5, 3)
+local DEFAULT_LABELS = {
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "11",
+  "12",
+  "13",
+  "14",
+  "15",
+  "21",
+  "22",
+  "23",
+  "24",
+  "25",
+  "31",
+  "32",
+  "33",
+  "34",
+  "35",
+  "41",
+  "42",
+  "43",
+  "44",
+  "45",
+  "51",
+  "52",
+  "53",
+  "54",
+  "55",
+  "111",
+  "112",
+  "113",
+  "114",
+  "115",
+  "121",
+  "122",
+  "123",
+  "124",
+  "125",
+  "131",
+  "132",
+  "133",
+  "134",
+  "135",
+  "141",
+  "142",
+  "143",
+  "144",
+  "145",
+  "151",
+  "152",
+  "153",
+  "154",
+  "155",
+  "211",
+  "212",
+  "213",
+  "214",
+  "215",
+  "221",
+  "222",
+  "223",
+  "224",
+  "225",
+  "231",
+  "232",
+  "233",
+  "234",
+  "235",
+  "241",
+  "242",
+  "243",
+  "244",
+  "245",
+  "251",
+  "252",
+  "253",
+  "254",
+  "255",
+}
 
 local M = {
   config = {
