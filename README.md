@@ -2,6 +2,24 @@
 
 A Neovim plugin that makes vertical motions more comfortable.
 
+This is a branch of the original repo
+## Add feature:
+- add a fun called 'gen_label' to generate label at ease
+- consecutive numbers can be trimmed if wantted (gen_label has 4 params, when the 4th one isnt empty it is the very consecutive number)
+- i.e.
+```lua
+-- base is [1,2,3]
+-- depth is 4
+gen_label(1,3,4)
+-- base is [1,2,3,4,5]
+-- depth is 3
+gen_label(1,5,3)
+-- base is [1,2,3]
+-- depth is 4
+-- all consecutive 2s are trimmed which means "22", "122", or "322" are gone
+gen_label(1,3,4,2)
+```
+
 ![comfy_demo](https://github.com/user-attachments/assets/e59f61f3-a2e7-48be-966a-db7543ed0a82)
 
 ## The problem
@@ -55,7 +73,7 @@ Using your plugin manager of choice (lazy.nvim in the example below):
 
 ```lua
 return {
-  'mluders/comfy-line-numbers.nvim'
+  'MrKyomoto/comfy-line-numbers.nvim'
 }
 ```
 
