@@ -2,6 +2,24 @@
 
 A Neovim plugin that makes vertical motions more comfortable.
 
+This is a branch of the original repo
+## Add feature:
+- add a fun called 'gen_label' to generate label at ease
+- consecutive numbers can be trimmed if wantted (gen_label has 4 params, when the 4th one isnt empty it is the very consecutive number)
+- i.e.
+```lua
+-- base is [1,2,3]
+-- depth is 4
+gen_label(1,3,4)
+-- base is [1,2,3,4,5]
+-- depth is 3
+gen_label(1,5,3)
+-- base is [1,2,3]
+-- depth is 4
+-- all consecutive 2s are trimmed which means "22", "122", or "322" are gone
+gen_label(1,3,4,2)
+```
+
 ![comfy_demo](https://github.com/user-attachments/assets/e59f61f3-a2e7-48be-966a-db7543ed0a82)
 
 ## The problem
@@ -55,24 +73,20 @@ Using your plugin manager of choice (lazy.nvim in the example below):
 
 ```lua
 return {
-  'mluders/comfy-line-numbers.nvim'
+  'MrKyomoto/comfy-line-numbers.nvim'
 }
 ```
 
 ## Customization
 
 ```lua
+local gen_labels = require("comfy-line-numbers.custom_labels").gen_labels
 require('comfy-line-numbers').setup({
-  labels = {
-    '1', '2', '3', '4', '5', '11', '12', '13', '14', '15', '21', '22', '23',
-    '24', '25', '31', '32', '33', '34', '35', '41', '42', '43', '44', '45',
-    '51', '52', '53', '54', '55', '111', '112', '113', '114', '115', '121',
-    '122', '123', '124', '125', '131', '132', '133', '134', '135', '141',
-    '142', '143', '144', '145', '151', '152', '153', '154', '155', '211',
-    '212', '213', '214', '215', '221', '222', '223', '224', '225', '231',
-    '232', '233', '234', '235', '241', '242', '243', '244', '245', '251',
-    '252', '253', '254', '255',
-  },
+  -- gen_labels(start, end_, depth)
+  -- start: default value is 1, must be a number, in [0,8]
+  -- end_: default value is 3, must be a number, in [2,9]
+  -- depth: default value is 3, must be a number, in [1,9]
+  labels = gen_labels(1,4,3),
   up_key = 'k',
   down_key = 'j',
 

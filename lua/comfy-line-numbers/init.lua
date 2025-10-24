@@ -91,16 +91,16 @@ local DEFAULT_LABELS = {
 local M = {
   config = {
     labels = DEFAULT_LABELS,
-    up_key = 'k',
-    down_key = 'j',
-    hidden_file_types = { 'undotree' },
-    hidden_buffer_types = { 'terminal', 'nofile' }
-  }
+    up_key = "k",
+    down_key = "j",
+    hidden_file_types = { "undotree" },
+    hidden_buffer_types = { "terminal", "nofile" },
+  },
 }
 
 local should_hide_numbers = function(filetype, buftype)
-  return vim.tbl_contains(M.config.hidden_file_types, filetype) or
-      vim.tbl_contains(M.config.hidden_buffer_types, buftype)
+  return vim.tbl_contains(M.config.hidden_file_types, filetype)
+    or vim.tbl_contains(M.config.hidden_buffer_types, buftype)
 end
 
 -- Defined on the global namespace to be used in Vimscript below.
@@ -129,11 +129,11 @@ function update_status_column()
 
     if should_hide_numbers(filetype, buftype) then
       vim.api.nvim_win_call(win, function()
-        vim.opt.statuscolumn = ''
+        vim.opt.statuscolumn = ""
       end)
     else
       vim.api.nvim_win_call(win, function()
-        vim.opt.statuscolumn = '%=%s%=%{v:lua.get_label(v:lnum, v:relnum)} '
+        vim.opt.statuscolumn = "%=%s%=%{v:lua.get_label(v:lnum, v:relnum)} "
       end)
     end
   end
@@ -145,8 +145,8 @@ function M.enable_line_numbers()
   end
 
   for index, label in ipairs(M.config.labels) do
-    vim.keymap.set({ 'n', 'v', 'o' }, label .. M.config.up_key, index .. 'k', { noremap = true })
-    vim.keymap.set({ 'n', 'v', 'o' }, label .. M.config.down_key, index .. 'j', { noremap = true })
+    vim.keymap.set({ "n", "v", "o" }, label .. M.config.up_key, index .. "k", { noremap = true })
+    vim.keymap.set({ "n", "v", "o" }, label .. M.config.down_key, index .. "j", { noremap = true })
   end
 
   enabled = true
@@ -159,10 +159,9 @@ function M.disable_line_numbers()
   end
 
   for index, label in ipairs(M.config.labels) do
-    vim.keymap.del({ 'n', 'v', 'o' }, label .. M.config.up_key)
-    vim.keymap.del({ 'n', 'v', 'o' }, label .. M.config.down_key)
+    vim.keymap.del({ "n", "v", "o" }, label .. M.config.up_key)
+    vim.keymap.del({ "n", "v", "o" }, label .. M.config.down_key)
   end
-
 
   enabled = false
   update_status_column()
@@ -174,32 +173,28 @@ function create_auto_commands()
   vim.api.nvim_create_autocmd({ "WinNew", "BufWinEnter", "BufEnter", "TermOpen" }, {
     group = group,
     pattern = "*",
-    callback = update_status_column
+    callback = update_status_column,
   })
 end
 
 function M.setup(config)
   M.config = vim.tbl_deep_extend("force", M.config, config or {})
 
-  vim.api.nvim_create_user_command(
-    'ComfyLineNumbers',
-    function(args)
-      if args.args == "enable" then
-        M.enable_line_numbers()
-      elseif args.args == "disable" then
+  vim.api.nvim_create_user_command("ComfyLineNumbers", function(args)
+    if args.args == "enable" then
+      M.enable_line_numbers()
+    elseif args.args == "disable" then
+      M.disable_line_numbers()
+    elseif args.args == "toggle" then
+      if enabled then
         M.disable_line_numbers()
-      elseif args.args == "toggle" then
-        if enabled then
-          M.disable_line_numbers()
-        else
-          M.enable_line_numbers()
-        end
       else
-        print("Invalid argument.")
+        M.enable_line_numbers()
       end
-    end,
-    { nargs = 1 }
-  )
+    else
+      print "Invalid argument."
+    end
+  end, { nargs = 1 })
 
   vim.opt.relativenumber = true
   create_auto_commands()
