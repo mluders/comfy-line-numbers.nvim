@@ -109,6 +109,11 @@ _G.get_label = function(absnum, relnum)
     return absnum
   end
 
+  -- Check if relativenumber is enabled (respects nvim-numbertoggle)
+  if not vim.wo.relativenumber then
+    return string.format("%-2d", absnum)
+  end
+
   if relnum == 0 then
     -- Pad current line number to match width
     return string.format("%-2d", vim.fn.line ".")
