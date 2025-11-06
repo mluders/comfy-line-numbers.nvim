@@ -133,7 +133,7 @@ function update_status_column()
       end)
     else
       vim.api.nvim_win_call(win, function()
-        vim.opt.statuscolumn = '%=%s%=%{v:lua.get_label(v:lnum, v:relnum)} '
+        vim.opt.statuscolumn = '%=%s%=%{v:virtnum > 0 ? "" : v:lua.get_label(v:lnum, v:relnum)} '
       end)
     end
   end
