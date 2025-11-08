@@ -159,8 +159,10 @@ function M.enable_line_numbers()
   end
 
   for index, label in ipairs(M.config.labels) do
-    vim.keymap.set({ 'n', 'v', 'o' }, label .. M.config.up_key, index .. 'k', { noremap = true })
-    vim.keymap.set({ 'n', 'v', 'o' }, label .. M.config.down_key, index .. 'j', { noremap = true })
+    if label ~= "" then
+      vim.keymap.set({ 'n', 'v', 'o' }, label .. M.config.up_key, index .. 'k', { noremap = true })
+      vim.keymap.set({ 'n', 'v', 'o' }, label .. M.config.down_key, index .. 'j', { noremap = true })
+    end
   end
 
   enabled = true
@@ -173,8 +175,10 @@ function M.disable_line_numbers()
   end
 
   for index, label in ipairs(M.config.labels) do
-    vim.keymap.del({ 'n', 'v', 'o' }, label .. M.config.up_key)
-    vim.keymap.del({ 'n', 'v', 'o' }, label .. M.config.down_key)
+    if label ~= "" then
+      vim.keymap.del({ 'n', 'v', 'o' }, label .. M.config.up_key)
+      vim.keymap.del({ 'n', 'v', 'o' }, label .. M.config.down_key)
+    end
   end
 
 
