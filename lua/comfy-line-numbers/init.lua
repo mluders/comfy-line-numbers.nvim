@@ -5,6 +5,54 @@
 
 local enabled = false
 
+-- Calculate total number of combinations for given base and max_digits
+-- Formula: base^1 + base^2 + ... + base^max_digits = (base^(max_digits+1) - base) / (base - 1)
+local function calculate_combinations(base, max_digits)
+  local total = 0
+  for i = 1, max_digits do
+    total = total + math.pow(base, i)
+  end
+  return total
+end
+
+-- Generate labels based on the base (3-9) and max_digits
+-- For example, base=5, max_digits=3 generates all combinations using digits {1,2,3,4,5}:
+-- 1, 2, 3, 4, 5, 11, 12, ..., 555
+local function generate_labels(base, max_digits)
+  if base < 3 or base > 9 then
+    error("base must be between 3 and 9")
+  end
+
+  local total_combinations = calculate_combinations(base, max_digits)
+  if total_combinations < 100 then
+    error(string.format(
+      "Configuration yields only %d combinations (minimum 100 required). " ..
+      "Please increase base (currently %d) or max_digits (currently %d) or both.",
+      total_combinations, base, max_digits
+    ))
+  end
+
+  local labels = {}
+
+  -- Generate combinations for each digit length
+  for digit_count = 1, max_digits do
+    local function generate_recursive(current, remaining_digits)
+      if remaining_digits == 0 then
+        table.insert(labels, current)
+        return
+      end
+
+      for digit = 1, base do
+        generate_recursive(current .. tostring(digit), remaining_digits - 1)
+      end
+    end
+
+    generate_recursive("", digit_count)
+  end
+
+  return labels
+end
+
 local DEFAULT_LABELS = {
   "1",
   "2",
@@ -193,7 +241,22 @@ function create_auto_commands()
 end
 
 function M.setup(config)
-  M.config = vim.tbl_deep_extend("force", M.config, config or {})
+  config = config or {}
+
+  -- If labels is NOT explicitly provided, generate them from base and max_digits
+  if not config.labels then
+    local base = config.base or 5  -- default base = 5
+    local max_digits = config.max_digits or 10  -- default max_digits = 10
+
+    if base < 3 or base > 9 then
+      error("base must be between 3 and 9")
+    end
+
+    config.labels = generate_labels(base, max_digits)
+  end
+  -- If labels IS provided, use it directly (ignore base and max_digits)
+
+  M.config = vim.tbl_deep_extend("force", M.config, config)
 
   vim.api.nvim_create_user_command(
     'ComfyLineNumbers',
