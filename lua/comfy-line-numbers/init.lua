@@ -5,6 +5,57 @@
 
 local enabled = false
 
+-- Minimum number of label combinations required
+local MIN_COMBINATIONS = 100
+
+-- Calculate total number of combinations for given base and max_digits
+-- Formula: base^1 + base^2 + ... + base^max_digits = (base^(max_digits+1) - base) / (base - 1)
+local function calculate_combinations(base, max_digits)
+  local total = 0
+  for i = 1, max_digits do
+    total = total + math.pow(base, i)
+  end
+  return total
+end
+
+-- Generate labels based on the base (3-9) and max_digits
+-- For example, base=5, max_digits=3 generates all combinations using digits {1,2,3,4,5}:
+-- 1, 2, 3, 4, 5, 11, 12, ..., 555
+local function generate_labels(base, max_digits)
+  if base < 3 or base > 9 then
+    error("base must be between 3 and 9")
+  end
+
+  local total_combinations = calculate_combinations(base, max_digits)
+  if total_combinations < MIN_COMBINATIONS then
+    error(string.format(
+      "Configuration yields only %d combinations (minimum %d required). " ..
+      "Please increase base (currently %d) or max_digits (currently %d) or both.",
+      total_combinations, MIN_COMBINATIONS, base, max_digits
+    ))
+  end
+
+  local labels = {}
+
+  -- Generate combinations for each digit length
+  for digit_count = 1, max_digits do
+    local function generate_recursive(current, remaining_digits)
+      if remaining_digits == 0 then
+        table.insert(labels, current)
+        return
+      end
+
+      for digit = 1, base do
+        generate_recursive(current .. tostring(digit), remaining_digits - 1)
+      end
+    end
+
+    generate_recursive("", digit_count)
+  end
+
+  return labels
+end
+
 local DEFAULT_LABELS = {
   "1",
   "2",
@@ -88,13 +139,39 @@ local DEFAULT_LABELS = {
   "255",
 }
 
+-- Calculate how many digits are needed to represent a count in our labeling system
+-- For example: count=100, base=5 → the 100th label is "1144" → returns 4
+local function calculate_digits_for_count(count, base)
+  if count <= 0 then
+    return 1
+  end
+
+  -- Calculate which "digit length group" contains the count
+  -- Group 1: base^1 labels (1-digit: 1, 2, 3, 4, 5)
+  -- Group 2: base^2 labels (2-digit: 11, 12, ..., 55)
+  -- Group 3: base^3 labels (3-digit: 111, 112, ..., 555)
+  local cumulative = 0
+  local digits = 1
+
+  while cumulative < count do
+    cumulative = cumulative + math.pow(base, digits)
+    if cumulative >= count then
+      return digits
+    end
+    digits = digits + 1
+  end
+
+  return digits
+end
+
 local M = {
   config = {
     labels = DEFAULT_LABELS,
     up_key = 'k',
     down_key = 'j',
     hidden_file_types = { 'undotree' },
-    hidden_buffer_types = { 'terminal', 'nofile' }
+    hidden_buffer_types = { 'terminal', 'nofile' },
+    base = 5  -- Track the base for width calculation
   }
 }
 
@@ -141,10 +218,12 @@ function update_status_column()
       end)
     else
       vim.api.nvim_win_call(win, function()
-        -- Calculate and set consistent width based on total lines
-        -- Minimum 4 to fit longest custom labels (e.g., "1444")
+        -- Calculate width based on buffer size in our base-X numbering system
+        -- Minimum width of 4 digits to ensure reasonable gutter width
         local total_lines = vim.api.nvim_buf_line_count(buf)
-        local width = math.max(4, #tostring(total_lines))
+        local digits_needed = calculate_digits_for_count(total_lines, M.config.base)
+        -- Also respect absolute line numbers if they're longer
+        local width = math.max(4, digits_needed, #tostring(total_lines))
         vim.wo[win].numberwidth = width
 
         vim.opt.statuscolumn = '%=%s%=%{v:virtnum > 0 ? "" : v:lua.get_label(v:lnum, v:relnum)} '
@@ -193,7 +272,45 @@ function create_auto_commands()
 end
 
 function M.setup(config)
-  M.config = vim.tbl_deep_extend("force", M.config, config or {})
+  config = config or {}
+
+  -- If labels is NOT explicitly provided, generate them from base and max_digits
+  if not config.labels then
+    local base = config.base or 5  -- default base = 5
+    local max_digits = config.max_digits or 5  -- default max_digits = 5
+
+    if base < 3 or base > 9 then
+      error("base must be between 3 and 9")
+    end
+
+    -- Warn if max_digits is high, as this can impact startup time
+    if max_digits > 5 then
+      vim.notify(
+        string.format(
+          "comfy-line-numbers: max_digits=%d will generate %d combinations, which may cause slower startup times. Consider using max_digits=5 or less.",
+          max_digits,
+          calculate_combinations(base, max_digits)
+        ),
+        vim.log.levels.WARN
+      )
+    end
+
+    config.labels = generate_labels(base, max_digits)
+    config.base = base  -- Store base for width calculation
+  else
+    -- If labels IS provided, validate it has at least MIN_COMBINATIONS
+    if #config.labels < MIN_COMBINATIONS then
+      error(string.format(
+        "Manual labels configuration has only %d combinations (minimum %d required). " ..
+        "Please provide at least %d labels.",
+        #config.labels, MIN_COMBINATIONS, MIN_COMBINATIONS
+      ))
+    end
+    -- For manual labels, infer base from label pattern or default to 5
+    config.base = config.base or 5
+  end
+
+  M.config = vim.tbl_deep_extend("force", M.config, config)
 
   vim.api.nvim_create_user_command(
     'ComfyLineNumbers',

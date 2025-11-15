@@ -61,6 +61,46 @@ return {
 
 ## Customization
 
+### Simple Configuration (Recommended)
+
+The plugin automatically generates labels based on `base` and `max_digits`:
+
+```lua
+require('comfy-line-numbers').setup({
+  base = 5,        -- Use digits 1-5 (default). Can be 3-9.
+  max_digits = 5,  -- Generate up to 5-digit combinations (default)
+  up_key = 'k',
+  down_key = 'j',
+
+  -- Line numbers will be completely hidden for the following file/buffer types
+  hidden_file_types = { 'undotree' },
+  hidden_buffer_types = { 'terminal', 'nofile' }
+})
+```
+
+**Defaults:** `base = 5`, `max_digits = 5` → **3,905 combinations** (plenty for most files!)
+
+### Base and Max Digits Options
+
+**Base** determines which digits are used:
+- `base = 3`: Uses digits {1, 2, 3}
+- `base = 4`: Uses digits {1, 2, 3, 4}
+- `base = 5`: Uses digits {1, 2, 3, 4, 5} (default)
+- ... up to `base = 9`
+
+**Max Digits** determines the longest label:
+- `max_digits = 3`: Labels up to 3 digits (e.g., 555)
+- `max_digits = 4`: Labels up to 4 digits (e.g., 5555)
+- `max_digits = 5`: Labels up to 5 digits (e.g., 55555) (default)
+
+**Note:** Values higher than `max_digits = 5` will generate many more combinations and may cause slower startup times. The plugin will display a warning if you configure `max_digits > 5`.
+
+**Minimum requirement:** The choice of `base` and `max_digits` must meet the 100 combination minimum. The plugin will validate this requirement and display a helpful error message if not met.
+
+### Advanced: Manual Labels
+
+For complete control, specify labels manually (this overrides `base` and `max_digits`). Note that manual labels must also meet the minimum 100 combination requirement:
+
 ```lua
 require('comfy-line-numbers').setup({
   labels = {
