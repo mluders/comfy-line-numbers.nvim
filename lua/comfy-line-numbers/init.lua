@@ -283,6 +283,18 @@ function M.setup(config)
       error("base must be between 3 and 9")
     end
 
+    -- Warn if max_digits is high, as this can impact startup time
+    if max_digits > 5 then
+      vim.notify(
+        string.format(
+          "comfy-line-numbers: max_digits=%d will generate %d combinations, which may cause slower startup times. Consider using max_digits=5 or less.",
+          max_digits,
+          calculate_combinations(base, max_digits)
+        ),
+        vim.log.levels.WARN
+      )
+    end
+
     config.labels = generate_labels(base, max_digits)
     config.base = base  -- Store base for width calculation
   else

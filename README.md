@@ -93,6 +93,8 @@ require('comfy-line-numbers').setup({
 - `max_digits = 4`: Labels up to 4 digits (e.g., 5555)
 - `max_digits = 5`: Labels up to 5 digits (e.g., 55555) (default)
 
+**Note:** Values higher than `max_digits = 5` will generate many more combinations and may cause slower startup times. The plugin will display a warning if you configure `max_digits > 5`.
+
 **Minimum requirement:** The choice of `base` and `max_digits` must meet the 100 combination minimum. The plugin will validate this requirement and display a helpful error message if not met.
 
 ### Advanced: Manual Labels
