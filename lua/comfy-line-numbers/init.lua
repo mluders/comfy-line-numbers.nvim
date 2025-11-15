@@ -5,6 +5,9 @@
 
 local enabled = false
 
+-- Minimum number of label combinations required
+local MIN_COMBINATIONS = 100
+
 -- Calculate total number of combinations for given base and max_digits
 -- Formula: base^1 + base^2 + ... + base^max_digits = (base^(max_digits+1) - base) / (base - 1)
 local function calculate_combinations(base, max_digits)
@@ -24,11 +27,11 @@ local function generate_labels(base, max_digits)
   end
 
   local total_combinations = calculate_combinations(base, max_digits)
-  if total_combinations < 100 then
+  if total_combinations < MIN_COMBINATIONS then
     error(string.format(
-      "Configuration yields only %d combinations (minimum 100 required). " ..
+      "Configuration yields only %d combinations (minimum %d required). " ..
       "Please increase base (currently %d) or max_digits (currently %d) or both.",
-      total_combinations, base, max_digits
+      total_combinations, MIN_COMBINATIONS, base, max_digits
     ))
   end
 
@@ -254,12 +257,12 @@ function M.setup(config)
 
     config.labels = generate_labels(base, max_digits)
   else
-    -- If labels IS provided, validate it has at least 100 combinations
-    if #config.labels < 100 then
+    -- If labels IS provided, validate it has at least MIN_COMBINATIONS
+    if #config.labels < MIN_COMBINATIONS then
       error(string.format(
-        "Manual labels configuration has only %d combinations (minimum 100 required). " ..
-        "Please provide at least 100 labels.",
-        #config.labels
+        "Manual labels configuration has only %d combinations (minimum %d required). " ..
+        "Please provide at least %d labels.",
+        #config.labels, MIN_COMBINATIONS, MIN_COMBINATIONS
       ))
     end
   end

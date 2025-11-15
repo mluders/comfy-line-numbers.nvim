@@ -93,11 +93,11 @@ require('comfy-line-numbers').setup({
 - `max_digits = 5`: Labels up to 5 digits (e.g., 55555)
 - `max_digits = 10`: Labels up to 10 digits (default)
 
-**Minimum requirement:** Your configuration must yield at least 100 combinations. The plugin will error if this isn't met.
+**Minimum requirement:** Both configuration methods (auto-generated via `base`/`max_digits` or manual via `labels`) must provide at least 100 combinations. The plugin will validate this requirement and display a helpful error message if not met.
 
 ### Advanced: Manual Labels
 
-For complete control, specify labels manually (this overrides `base` and `max_digits`):
+For complete control, specify labels manually (this overrides `base` and `max_digits`). Note that manual labels must also meet the minimum 100 combinations requirement:
 
 ```lua
 require('comfy-line-numbers').setup({
