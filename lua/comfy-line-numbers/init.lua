@@ -253,8 +253,16 @@ function M.setup(config)
     end
 
     config.labels = generate_labels(base, max_digits)
+  else
+    -- If labels IS provided, validate it has at least 100 combinations
+    if #config.labels < 100 then
+      error(string.format(
+        "Manual labels configuration has only %d combinations (minimum 100 required). " ..
+        "Please provide at least 100 labels.",
+        #config.labels
+      ))
+    end
   end
-  -- If labels IS provided, use it directly (ignore base and max_digits)
 
   M.config = vim.tbl_deep_extend("force", M.config, config)
 
