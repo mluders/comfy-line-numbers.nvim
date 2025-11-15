@@ -139,13 +139,39 @@ local DEFAULT_LABELS = {
   "255",
 }
 
+-- Calculate how many digits are needed to represent a count in our labeling system
+-- For example: count=100, base=5 → the 100th label is "1144" → returns 4
+local function calculate_digits_for_count(count, base)
+  if count <= 0 then
+    return 1
+  end
+
+  -- Calculate which "digit length group" contains the count
+  -- Group 1: base^1 labels (1-digit: 1, 2, 3, 4, 5)
+  -- Group 2: base^2 labels (2-digit: 11, 12, ..., 55)
+  -- Group 3: base^3 labels (3-digit: 111, 112, ..., 555)
+  local cumulative = 0
+  local digits = 1
+
+  while cumulative < count do
+    cumulative = cumulative + math.pow(base, digits)
+    if cumulative >= count then
+      return digits
+    end
+    digits = digits + 1
+  end
+
+  return digits
+end
+
 local M = {
   config = {
     labels = DEFAULT_LABELS,
     up_key = 'k',
     down_key = 'j',
     hidden_file_types = { 'undotree' },
-    hidden_buffer_types = { 'terminal', 'nofile' }
+    hidden_buffer_types = { 'terminal', 'nofile' },
+    base = 5  -- Track the base for width calculation
   }
 }
 
@@ -192,10 +218,12 @@ function update_status_column()
       end)
     else
       vim.api.nvim_win_call(win, function()
-        -- Calculate and set consistent width based on total lines
-        -- Minimum 4 to fit longest custom labels (e.g., "1444")
+        -- Calculate width based on buffer size in our base-X numbering system
+        -- Minimum width of 4 digits to ensure reasonable gutter width
         local total_lines = vim.api.nvim_buf_line_count(buf)
-        local width = math.max(4, #tostring(total_lines))
+        local digits_needed = calculate_digits_for_count(total_lines, M.config.base)
+        -- Also respect absolute line numbers if they're longer
+        local width = math.max(4, digits_needed, #tostring(total_lines))
         vim.wo[win].numberwidth = width
 
         vim.opt.statuscolumn = '%=%s%=%{v:virtnum > 0 ? "" : v:lua.get_label(v:lnum, v:relnum)} '
@@ -249,13 +277,14 @@ function M.setup(config)
   -- If labels is NOT explicitly provided, generate them from base and max_digits
   if not config.labels then
     local base = config.base or 5  -- default base = 5
-    local max_digits = config.max_digits or 10  -- default max_digits = 10
+    local max_digits = config.max_digits or 5  -- default max_digits = 5
 
     if base < 3 or base > 9 then
       error("base must be between 3 and 9")
     end
 
     config.labels = generate_labels(base, max_digits)
+    config.base = base  -- Store base for width calculation
   else
     -- If labels IS provided, validate it has at least MIN_COMBINATIONS
     if #config.labels < MIN_COMBINATIONS then
@@ -265,6 +294,8 @@ function M.setup(config)
         #config.labels, MIN_COMBINATIONS, MIN_COMBINATIONS
       ))
     end
+    -- For manual labels, infer base from label pattern or default to 5
+    config.base = config.base or 5
   end
 
   M.config = vim.tbl_deep_extend("force", M.config, config)
