@@ -88,6 +88,8 @@ local DEFAULT_LABELS = {
   "255",
 }
 
+local hooks = {}
+
 local M = {
   config = {
     labels = DEFAULT_LABELS,
@@ -95,6 +97,7 @@ local M = {
     down_key = 'j',
     hidden_file_types = { 'undotree' },
     hidden_buffer_types = { 'terminal', 'nofile' },
+    min_numberwidth = 3,
     gitsigns = {
       enabled = true,
     }
@@ -111,19 +114,19 @@ _G.is_line_staged = function(lnum, bufnr)
   if not package.loaded.gitsigns then
     return false
   end
-  
+
   local ok, result = pcall(function()
     local cache = require('gitsigns.cache').cache
-    
+
     if not cache[bufnr] then
       return false
     end
-    
+
     local hunks_staged = cache[bufnr].hunks_staged
     if not hunks_staged then
       return false
     end
-    
+
     for _, hunk in ipairs(hunks_staged) do
       local min_lnum = hunk.added.start
       local max_lnum = hunk.added.start + math.max(0, hunk.added.count - 1)
@@ -131,14 +134,14 @@ _G.is_line_staged = function(lnum, bufnr)
         return true
       end
     end
-    
+
     return false
   end)
-  
+
   if ok then
     return result
   end
-  
+
   return false
 end
 
@@ -150,7 +153,7 @@ _G.get_gitsign_sign = function(lnum)
 
   local bufnr = vim.api.nvim_get_current_buf()
   local config = require('gitsigns.config').config
-  
+
   -- Check staged hunks first
   local is_staged = _G.is_line_staged(lnum, bufnr)
   if is_staged then
@@ -172,7 +175,7 @@ _G.get_gitsign_sign = function(lnum)
       end
     end
   end
-  
+
   -- Check unstaged hunks
   local gitsigns = require('gitsigns')
   local hunks = gitsigns.get_hunks(bufnr)
@@ -201,18 +204,20 @@ _G.StatusColumn = function()
   if vim.v.virtnum > 0 then
     return ""
   end
-  
-  -- Get diagnostic signs
-  local diag = "%s"
-  
-  -- Get line number
-  local num = _G.get_label(vim.v.lnum, vim.v.relnum)
-  
-  -- Get gitsign with color
-  local git = _G.get_gitsign_sign(vim.v.lnum)
-  
+
   -- Format: Diag | Number | GitSign
-  return diag .. "%=" .. num .. " " .. git
+  local data = {
+    diag = "%s",
+    num = _G.get_label(vim.v.lnum, vim.v.relnum),
+    git = _G.get_gitsign_sign(vim.v.lnum),
+  }
+
+  -- Apply hooks
+  for _, hook in ipairs(hooks) do
+    data = hook(vim.v.lnum, data) or data
+  end
+
+  return data.diag .. "%=" .. data.num .. " " .. data.git
 end
 
 -- Defined on the global namespace to be used in Vimscript below.
@@ -257,12 +262,11 @@ function update_status_column()
          -- vim.opt.statuscolumn = ''
        end)
      else
-        vim.api.nvim_win_call(win, function()
-          -- Calculate and set consistent width based on total lines
-          -- Minimum 4 to fit longest custom labels (e.g., "1444")
-          local total_lines = vim.api.nvim_buf_line_count(buf)
-          local width = math.max(4, #tostring(total_lines))
-          vim.wo[win].numberwidth = width
+         vim.api.nvim_win_call(win, function()
+           -- Calculate and set consistent width based on total lines
+           local total_lines = vim.api.nvim_buf_line_count(buf)
+           local width = math.max(M.config.min_numberwidth, #tostring(total_lines))
+           vim.wo[win].numberwidth = width
 
               -- Format: Diag | Number(pad) | GitSign
               -- %s = diagnostic signs only
@@ -306,6 +310,10 @@ function M.disable_line_numbers()
    update_status_column()
 end
 
+function M.register_line_hook(name, hook_fn)
+  table.insert(hooks, hook_fn)
+end
+
 function create_auto_commands()
     local group = vim.api.nvim_create_augroup("ComfyLineNumbers", { clear = true })
 
@@ -335,7 +343,7 @@ end
 
 function M.setup(config)
    M.config = vim.tbl_deep_extend("force", M.config, config or {})
-   
+
    -- Disable gitsigns sign column when using statuscolumn display
    if M.config.gitsigns.enabled then
      vim.schedule(disable_gitsigns_signcolumn)
@@ -363,16 +371,16 @@ function M.setup(config)
           update_status_column()
         elseif args.args == "debug" then
           local bufnr = vim.api.nvim_get_current_buf()
-          
+
           if not package.loaded.gitsigns then
             vim.notify("Gitsigns not loaded", vim.log.levels.WARN)
             return
           end
-          
+
           local cache = require('gitsigns.cache').cache
           local hunks = require('gitsigns').get_hunks(bufnr)
           local hunks_staged = cache[bufnr] and cache[bufnr].hunks_staged or {}
-          
+
           vim.notify("Hunks (unstaged): " .. #(hunks or {}), vim.log.levels.INFO)
           vim.notify("Hunks (staged): " .. #hunks_staged, vim.log.levels.INFO)
         else
@@ -387,9 +395,9 @@ function M.setup(config)
       }
     )
 
-  vim.opt.relativenumber = true
-  create_auto_commands()
-  M.enable_line_numbers()
+   vim.opt.relativenumber = true
+   create_auto_commands()
+   M.enable_line_numbers()
 end
 
 return M

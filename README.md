@@ -76,11 +76,43 @@ require('comfy-line-numbers').setup({
   up_key = 'k',
   down_key = 'j',
 
+ -- Reduce/Increase the width of the statuscolumn
+  min_numberwidth = 3,
+
+  -- Enable integration with gitsigns.nvim
+  gitsigns = {
+    enabled = true,
+  }
+
   -- Line numbers will be completely hidden for the following file/buffer types
   hidden_file_types = { 'undotree' },
   hidden_buffer_types = { 'terminal', 'nofile' }
 })
 ```
+
+## Hooks
+
+Here is an example of a hook that highlights your favorite line number in a different color.
+
+```lua
+local comfy = require 'comfy-line-numbers'
+local function strip_padding(str)
+  return str:gsub("^%s+", "")
+end
+comfy.register_line_hook('highlight_226', function(lnum, data)
+  -- data contains: { num = <string>, diag = <string>, git = <string> }
+  -- num for line number text, diag for diagnostics text, git for git signs text
+  -- The text can contain highlight groups.
+  if lnum == 42 then
+    local stripped = strip_padding(data.num)
+    data.num = '%#ErrorMsg#' .. stripped .. '%*'
+  end
+  return data
+end)
+```
+
+If you where to add text into the statuscolumn, prefer adding it to data.num and don't forget to take that into account when setting
+`min_numberwidth`, otherwise the statuscolumn might shift when the line number changes.
 
 ## Testing
 
