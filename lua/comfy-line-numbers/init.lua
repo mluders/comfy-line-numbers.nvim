@@ -341,45 +341,51 @@ function M.setup(config)
      vim.schedule(disable_gitsigns_signcolumn)
    end
 
-   vim.api.nvim_create_user_command(
-     'ComfyLineNumbers',
-     function(args)
-       if args.args == "enable" then
-         M.enable_line_numbers()
-       elseif args.args == "disable" then
-         M.disable_line_numbers()
-       elseif args.args == "toggle" then
-         if enabled then
-           M.disable_line_numbers()
-         else
-           M.enable_line_numbers()
-         end
-       else
-         print("Invalid argument.")
-       end
-     end,
-     { nargs = 1 }
-   )
-
-   vim.api.nvim_create_user_command(
-     'ComfyDebug',
-     function()
-       local bufnr = vim.api.nvim_get_current_buf()
-       
-       if not package.loaded.gitsigns then
-         vim.notify("Gitsigns not loaded", vim.log.levels.WARN)
-         return
-       end
-       
-       local cache = require('gitsigns.cache').cache
-       local hunks = require('gitsigns').get_hunks(bufnr)
-       local hunks_staged = cache[bufnr] and cache[bufnr].hunks_staged or {}
-       
-       vim.notify("Hunks (unstaged): " .. #(hunks or {}), vim.log.levels.INFO)
-       vim.notify("Hunks (staged): " .. #hunks_staged, vim.log.levels.INFO)
-     end,
-     { nargs = 0 }
-   )
+    vim.api.nvim_create_user_command(
+      'ComfyLineNumbers',
+      function(args)
+        if args.args == "enable" then
+          M.enable_line_numbers()
+        elseif args.args == "disable" then
+          M.disable_line_numbers()
+        elseif args.args == "toggle" then
+          if enabled then
+            M.disable_line_numbers()
+          else
+            M.enable_line_numbers()
+          end
+        elseif args.args == "toggle_signs" then
+          if M.config.gitsigns.enabled then
+            M.config.gitsigns.enabled = false
+          else
+            M.config.gitsigns.enabled = true
+          end
+          update_status_column()
+        elseif args.args == "debug" then
+          local bufnr = vim.api.nvim_get_current_buf()
+          
+          if not package.loaded.gitsigns then
+            vim.notify("Gitsigns not loaded", vim.log.levels.WARN)
+            return
+          end
+          
+          local cache = require('gitsigns.cache').cache
+          local hunks = require('gitsigns').get_hunks(bufnr)
+          local hunks_staged = cache[bufnr] and cache[bufnr].hunks_staged or {}
+          
+          vim.notify("Hunks (unstaged): " .. #(hunks or {}), vim.log.levels.INFO)
+          vim.notify("Hunks (staged): " .. #hunks_staged, vim.log.levels.INFO)
+        else
+          print("Invalid argument.")
+        end
+      end,
+      {
+        nargs = 1,
+        complete = function()
+          return { "enable", "disable", "toggle", "toggle_signs", "debug" }
+        end
+      }
+    )
 
   vim.opt.relativenumber = true
   create_auto_commands()
