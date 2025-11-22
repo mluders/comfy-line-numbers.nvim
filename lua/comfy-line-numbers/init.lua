@@ -315,15 +315,15 @@ function create_auto_commands()
       callback = update_status_column
     })
 
-         -- Integrate with gitsigns if available
-         -- This ensures statuscolumn updates when gitsigns data changes
-         if M.config.gitsigns.enabled then
-           vim.api.nvim_create_autocmd("User", {
-             group = group,
-             pattern = "GitSignsUpdate",
-             callback = update_status_column
-           })
-         end
+    if M.config.gitsigns.enabled then
+      vim.api.nvim_create_autocmd("User", {
+        group = group,
+        pattern = "GitSignsUpdate",
+        callback = function()
+          vim.cmd.redraw({ bang = true })
+        end
+      })
+    end
 end
 
 -- Disable gitsigns native sign column to avoid duplicates in statuscolumn
