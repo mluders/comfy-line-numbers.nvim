@@ -252,30 +252,30 @@ _G.get_label = function(absnum, relnum)
 end
 
 function update_status_column()
-   for _, win in ipairs(vim.api.nvim_list_wins()) do
-     local buf = vim.api.nvim_win_get_buf(win)
-     local buftype = vim.bo[buf].buftype
-     local filetype = vim.bo[buf].filetype
+  for _, win in ipairs(vim.api.nvim_list_wins()) do
+    local buf = vim.api.nvim_win_get_buf(win)
+    local buftype = vim.bo[buf].buftype
+    local filetype = vim.bo[buf].filetype
 
-     if should_hide_numbers(filetype, buftype) then
-       vim.api.nvim_win_call(win, function()
-         -- vim.opt.statuscolumn = ''
-       end)
-     else
-         vim.api.nvim_win_call(win, function()
-           -- Calculate and set consistent width based on total lines
-           local total_lines = vim.api.nvim_buf_line_count(buf)
-           local width = math.max(M.config.min_numberwidth, #tostring(total_lines))
-           vim.wo[win].numberwidth = width
+    if should_hide_numbers(filetype, buftype) then
+      vim.api.nvim_win_call(win, function()
+        vim.opt.statuscolumn = ""
+      end)
+    else
+      vim.api.nvim_win_call(win, function()
+        -- Calculate and set consistent width based on total lines
+        local total_lines = vim.api.nvim_buf_line_count(buf)
+        local width = math.max(M.config.min_numberwidth, #tostring(total_lines))
+        vim.wo[win].numberwidth = width
 
-              -- Format: Diag | Number(pad) | GitSign
-              -- %s = diagnostic signs only
-              -- %=%{...} = custom line number with right alignment and padding
-               -- Use StatusColumn() function for proper coloring
-                vim.opt.statuscolumn = "%!v:lua.StatusColumn()"
-            end)
-         end
+        -- Format: Diag | Number(pad) | GitSign
+        -- %s = diagnostic signs only
+        -- %=%{...} = custom line number with right alignment and padding
+        -- Use StatusColumn() function for proper coloring
+        vim.opt.statuscolumn = "%!v:lua.StatusColumn()"
+      end)
     end
+  end
 end
 
 function M.enable_line_numbers()
