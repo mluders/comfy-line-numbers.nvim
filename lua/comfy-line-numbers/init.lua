@@ -284,7 +284,7 @@ function M.enable_line_numbers()
   end
 
   for index, label in ipairs(M.config.labels) do
-    if label ~= "" then
+    if type(label) == "string" and label ~= "" then
       vim.keymap.set({ 'n', 'v', 'o' }, label .. M.config.up_key, index .. 'k', { noremap = true })
       vim.keymap.set({ 'n', 'v', 'o' }, label .. M.config.down_key, index .. 'j', { noremap = true })
     end
@@ -299,12 +299,12 @@ function M.disable_line_numbers()
      return
    end
 
-   for index, label in ipairs(M.config.labels) do
-     if label ~= "" then
-       vim.keymap.del({ 'n', 'v', 'o' }, label .. M.config.up_key)
-       vim.keymap.del({ 'n', 'v', 'o' }, label .. M.config.down_key)
-     end
-   end
+    for index, label in ipairs(M.config.labels) do
+      if type(label) == "string" and label ~= "" then
+        vim.keymap.del({ 'n', 'v', 'o' }, label .. M.config.up_key)
+        vim.keymap.del({ 'n', 'v', 'o' }, label .. M.config.down_key)
+      end
+    end
 
    enabled = false
    update_status_column()
