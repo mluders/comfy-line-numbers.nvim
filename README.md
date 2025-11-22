@@ -99,7 +99,7 @@ local comfy = require 'comfy-line-numbers'
 local function strip_padding(str)
   return str:gsub("^%s+", "")
 end
-comfy.register_line_hook('highlight_226', function(lnum, data)
+comfy.register_line_hook('my_hook', function(lnum, data)
   -- data contains: { num = <string>, diag = <string>, git = <string> }
   -- num for line number text, diag for diagnostics text, git for git signs text
   -- The text can contain highlight groups.
