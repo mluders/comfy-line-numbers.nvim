@@ -395,7 +395,6 @@ function M.setup(config)
       }
     )
 
-   vim.opt.relativenumber = true
    create_auto_commands()
    M.enable_line_numbers()
 end
