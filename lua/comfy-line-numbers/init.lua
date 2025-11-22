@@ -88,19 +88,136 @@ local DEFAULT_LABELS = {
   "255",
 }
 
+local hooks = {}
+
 local M = {
   config = {
     labels = DEFAULT_LABELS,
     up_key = 'k',
     down_key = 'j',
     hidden_file_types = { 'undotree' },
-    hidden_buffer_types = { 'terminal', 'nofile' }
+    hidden_buffer_types = { 'terminal', 'nofile' },
+    min_numberwidth = 3,
+    gitsigns = {
+      enabled = true,
+    }
   }
 }
 
 local should_hide_numbers = function(filetype, buftype)
   return vim.tbl_contains(M.config.hidden_file_types, filetype) or
       vim.tbl_contains(M.config.hidden_buffer_types, buftype)
+end
+
+-- Check if a line is in a staged hunk using gitsigns' cache
+_G.is_line_staged = function(lnum, bufnr)
+  if not package.loaded.gitsigns then
+    return false
+  end
+
+  local ok, result = pcall(function()
+    local cache = require('gitsigns.cache').cache
+
+    if not cache[bufnr] then
+      return false
+    end
+
+    local hunks_staged = cache[bufnr].hunks_staged
+    if not hunks_staged then
+      return false
+    end
+
+    for _, hunk in ipairs(hunks_staged) do
+      local min_lnum = hunk.added.start
+      local max_lnum = hunk.added.start + math.max(0, hunk.added.count - 1)
+      if lnum >= min_lnum and lnum <= max_lnum then
+        return true
+      end
+    end
+
+    return false
+  end)
+
+  if ok then
+    return result
+  end
+
+  return false
+end
+
+-- Get the gitsign symbol for a line with proper coloring (for statuscolumn display)
+_G.get_gitsign_sign = function(lnum)
+  if not M.config.gitsigns.enabled or not package.loaded.gitsigns then
+    return " "
+  end
+
+  local bufnr = vim.api.nvim_get_current_buf()
+  local config = require('gitsigns.config').config
+
+  -- Check staged hunks first
+  local is_staged = _G.is_line_staged(lnum, bufnr)
+  if is_staged then
+    local cache = require('gitsigns.cache').cache
+    if cache[bufnr] then
+      local hunks_staged = cache[bufnr].hunks_staged
+      if hunks_staged then
+        for _, hunk in ipairs(hunks_staged) do
+          local min_lnum = hunk.added.start
+          local max_lnum = hunk.added.start + math.max(0, hunk.added.count - 1)
+          if lnum >= min_lnum and lnum <= max_lnum then
+            local signs_config = config.signs_staged
+            local symbol = signs_config[hunk.type] and signs_config[hunk.type].text or '│'
+            local hl_name = hunk.type:sub(1, 1):upper() .. hunk.type:sub(2)
+            local hl_group = 'GitSignsStaged' .. hl_name
+            return '%#' .. hl_group .. '#' .. symbol .. '%*'
+          end
+        end
+      end
+    end
+  end
+
+  -- Check unstaged hunks
+  local gitsigns = require('gitsigns')
+  local hunks = gitsigns.get_hunks(bufnr)
+  if not hunks then
+    return " "
+  end
+
+  for _, hunk in ipairs(hunks) do
+    local min_lnum = hunk.added.start
+    local max_lnum = hunk.added.start + math.max(0, hunk.added.count - 1)
+
+    if lnum >= min_lnum and lnum <= max_lnum then
+      local signs_config = config.signs
+      local symbol = signs_config[hunk.type] and signs_config[hunk.type].text or '│'
+      local hl_name = hunk.type:sub(1, 1):upper() .. hunk.type:sub(2)
+      local hl_group = 'GitSigns' .. hl_name
+      return '%#' .. hl_group .. '#' .. symbol .. '%*'
+    end
+  end
+
+  return " "
+end
+
+-- StatusColumn function that builds the entire column with colors
+_G.StatusColumn = function()
+  if vim.v.virtnum > 0 then
+    return ""
+  end
+
+  -- Format: Diag | Number | GitSign
+  local data = {
+    diag = "%s",
+    num = _G.get_label(vim.v.lnum, vim.v.relnum),
+    git = _G.get_gitsign_sign(vim.v.lnum),
+  }
+
+  -- Apply hooks
+  for _, hook in ipairs(hooks) do
+    data = hook(vim.v.lnum, data) or data
+  end
+
+  return data.diag .. "%=" .. data.num .. " " .. data.git
 end
 
 -- Defined on the global namespace to be used in Vimscript below.
@@ -111,6 +228,11 @@ _G.get_label = function(absnum, relnum)
 
   -- Use numberwidth for consistent padding (set in update_status_column)
   local width = vim.wo.numberwidth
+
+  -- Check if line numbers are disabled on the buffer nvim
+  if not vim.wo.number then
+    return ""
+  end
 
   -- Check if relativenumber is enabled (respects nvim-numbertoggle)
   if not vim.wo.relativenumber then
@@ -137,17 +259,20 @@ function update_status_column()
 
     if should_hide_numbers(filetype, buftype) then
       vim.api.nvim_win_call(win, function()
-        vim.opt.statuscolumn = ''
+        vim.opt.statuscolumn = ""
       end)
     else
       vim.api.nvim_win_call(win, function()
         -- Calculate and set consistent width based on total lines
-        -- Minimum 4 to fit longest custom labels (e.g., "1444")
         local total_lines = vim.api.nvim_buf_line_count(buf)
-        local width = math.max(4, #tostring(total_lines))
+        local width = math.max(M.config.min_numberwidth, #tostring(total_lines))
         vim.wo[win].numberwidth = width
 
-        vim.opt.statuscolumn = '%=%s%=%{v:virtnum > 0 ? "" : v:lua.get_label(v:lnum, v:relnum)} '
+        -- Format: Diag | Number(pad) | GitSign
+        -- %s = diagnostic signs only
+        -- %=%{...} = custom line number with right alignment and padding
+        -- Use StatusColumn() function for proper coloring
+        vim.opt.statuscolumn = "%!v:lua.StatusColumn()"
       end)
     end
   end
@@ -159,8 +284,10 @@ function M.enable_line_numbers()
   end
 
   for index, label in ipairs(M.config.labels) do
-    vim.keymap.set({ 'n', 'v', 'o' }, label .. M.config.up_key, index .. 'k', { noremap = true })
-    vim.keymap.set({ 'n', 'v', 'o' }, label .. M.config.down_key, index .. 'j', { noremap = true })
+    if type(label) == "string" and label ~= "" then
+      vim.keymap.set({ 'n', 'v', 'o' }, label .. M.config.up_key, index .. 'k', { noremap = true })
+      vim.keymap.set({ 'n', 'v', 'o' }, label .. M.config.down_key, index .. 'j', { noremap = true })
+    end
   end
 
   enabled = true
@@ -168,56 +295,108 @@ function M.enable_line_numbers()
 end
 
 function M.disable_line_numbers()
-  if not enabled then
-    return
-  end
+   if not enabled then
+     return
+   end
 
-  for index, label in ipairs(M.config.labels) do
-    vim.keymap.del({ 'n', 'v', 'o' }, label .. M.config.up_key)
-    vim.keymap.del({ 'n', 'v', 'o' }, label .. M.config.down_key)
-  end
+    for index, label in ipairs(M.config.labels) do
+      if type(label) == "string" and label ~= "" then
+        vim.keymap.del({ 'n', 'v', 'o' }, label .. M.config.up_key)
+        vim.keymap.del({ 'n', 'v', 'o' }, label .. M.config.down_key)
+      end
+    end
 
+   enabled = false
+   update_status_column()
+end
 
-  enabled = false
-  update_status_column()
+function M.register_line_hook(name, hook_fn)
+  table.insert(hooks, hook_fn)
 end
 
 function create_auto_commands()
-  local group = vim.api.nvim_create_augroup("ComfyLineNumbers", { clear = true })
+    local group = vim.api.nvim_create_augroup("ComfyLineNumbers", { clear = true })
 
-  vim.api.nvim_create_autocmd({ "WinNew", "BufWinEnter", "BufEnter", "TermOpen", "InsertEnter", "InsertLeave" }, {
-    group = group,
-    pattern = "*",
-    callback = update_status_column
-  })
+    vim.api.nvim_create_autocmd({ "WinNew", "BufWinEnter", "BufEnter", "TermOpen", "InsertEnter", "InsertLeave" }, {
+      group = group,
+      pattern = "*",
+      callback = update_status_column
+    })
+
+    if M.config.gitsigns.enabled then
+      vim.api.nvim_create_autocmd("User", {
+        group = group,
+        pattern = "GitSignsUpdate",
+        callback = function()
+          vim.cmd.redraw({ bang = true })
+        end
+      })
+    end
+end
+
+-- Disable gitsigns native sign column to avoid duplicates in statuscolumn
+local function disable_gitsigns_signcolumn()
+  if package.loaded.gitsigns then
+    require('gitsigns').toggle_signs(false)
+  end
 end
 
 function M.setup(config)
-  M.config = vim.tbl_deep_extend("force", M.config, config or {})
+   M.config = vim.tbl_deep_extend("force", M.config, config or {})
 
-  vim.api.nvim_create_user_command(
-    'ComfyLineNumbers',
-    function(args)
-      if args.args == "enable" then
-        M.enable_line_numbers()
-      elseif args.args == "disable" then
-        M.disable_line_numbers()
-      elseif args.args == "toggle" then
-        if enabled then
-          M.disable_line_numbers()
-        else
+   -- Disable gitsigns sign column when using statuscolumn display
+   if M.config.gitsigns.enabled then
+     vim.schedule(disable_gitsigns_signcolumn)
+   end
+
+    vim.api.nvim_create_user_command(
+      'ComfyLineNumbers',
+      function(args)
+        if args.args == "enable" then
           M.enable_line_numbers()
-        end
-      else
-        print("Invalid argument.")
-      end
-    end,
-    { nargs = 1 }
-  )
+        elseif args.args == "disable" then
+          M.disable_line_numbers()
+        elseif args.args == "toggle" then
+          if enabled then
+            M.disable_line_numbers()
+          else
+            M.enable_line_numbers()
+          end
+        elseif args.args == "toggle_signs" then
+          if M.config.gitsigns.enabled then
+            M.config.gitsigns.enabled = false
+          else
+            M.config.gitsigns.enabled = true
+          end
+          update_status_column()
+        elseif args.args == "debug" then
+          local bufnr = vim.api.nvim_get_current_buf()
 
-  vim.opt.relativenumber = true
-  create_auto_commands()
-  M.enable_line_numbers()
+          if not package.loaded.gitsigns then
+            vim.notify("Gitsigns not loaded", vim.log.levels.WARN)
+            return
+          end
+
+          local cache = require('gitsigns.cache').cache
+          local hunks = require('gitsigns').get_hunks(bufnr)
+          local hunks_staged = cache[bufnr] and cache[bufnr].hunks_staged or {}
+
+          vim.notify("Hunks (unstaged): " .. #(hunks or {}), vim.log.levels.INFO)
+          vim.notify("Hunks (staged): " .. #hunks_staged, vim.log.levels.INFO)
+        else
+          print("Invalid argument.")
+        end
+      end,
+      {
+        nargs = 1,
+        complete = function()
+          return { "enable", "disable", "toggle", "toggle_signs", "debug" }
+        end
+      }
+    )
+
+   create_auto_commands()
+   M.enable_line_numbers()
 end
 
 return M
