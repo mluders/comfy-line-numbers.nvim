@@ -4,7 +4,6 @@
 -- `:lua package.loaded['plugin-template'] = nil`
 
 local enabled = false
-local gitsigns_ns = vim.api.nvim_create_namespace('comfy_gitsigns')
 
 local DEFAULT_LABELS = {
   "1",
@@ -98,23 +97,6 @@ local M = {
     hidden_buffer_types = { 'terminal', 'nofile' },
     gitsigns = {
       enabled = true,
-      signs = {
-        add = '┃',
-        change = '┃',
-        delete = '▁',
-        topdelete = '▔',
-        changedelete = '~',
-        untracked = '┆',
-      },
-      signs_staged_enable = true,
-      signs_staged = {
-        add = '┃',
-        change = '┃',
-        delete = '▁',
-        topdelete = '▔',
-        changedelete = '~',
-        untracked = '┆',
-      }
     }
   }
 }
@@ -124,33 +106,27 @@ local should_hide_numbers = function(filetype, buftype)
       vim.tbl_contains(M.config.hidden_buffer_types, buftype)
 end
 
-
-
-
-
--- Check if a line is in a staged hunk using gitsigns internal cache
+-- Check if a line is in a staged hunk using gitsigns' cache
 _G.is_line_staged = function(lnum, bufnr)
-  -- Try to access gitsigns internal cache to get staged hunks
+  if not package.loaded.gitsigns then
+    return false
+  end
+  
   local ok, result = pcall(function()
-    -- Get the gitsigns manager to access internal cache
-    local manager = require('gitsigns.manager')
-    local cache = manager.cache
+    local cache = require('gitsigns.cache').cache
     
-    if not cache or not cache[bufnr] then
+    if not cache[bufnr] then
       return false
     end
     
-    local cache_entry = cache[bufnr]
-    local hunks_staged = cache_entry.hunks_staged
-    
+    local hunks_staged = cache[bufnr].hunks_staged
     if not hunks_staged then
       return false
     end
     
-    -- Check if line is in any staged hunk
     for _, hunk in ipairs(hunks_staged) do
-      local min_lnum = math.max(1, hunk.added.start)
-      local max_lnum = math.max(1, hunk.added.start + math.max(0, hunk.added.count - 1))
+      local min_lnum = hunk.added.start
+      local max_lnum = hunk.added.start + math.max(0, hunk.added.count - 1)
       if lnum >= min_lnum and lnum <= max_lnum then
         return true
       end
@@ -169,44 +145,54 @@ end
 -- Get the gitsign symbol for a line with proper coloring (for statuscolumn display)
 _G.get_gitsign_sign = function(lnum)
   if not M.config.gitsigns.enabled or not package.loaded.gitsigns then
-    return " "  -- Return padding space if gitsigns disabled
+    return " "
   end
 
   local bufnr = vim.api.nvim_get_current_buf()
+  local config = require('gitsigns.config').config
+  
+  -- Check staged hunks first
+  local is_staged = _G.is_line_staged(lnum, bufnr)
+  if is_staged then
+    local cache = require('gitsigns.cache').cache
+    if cache[bufnr] then
+      local hunks_staged = cache[bufnr].hunks_staged
+      if hunks_staged then
+        for _, hunk in ipairs(hunks_staged) do
+          local min_lnum = hunk.added.start
+          local max_lnum = hunk.added.start + math.max(0, hunk.added.count - 1)
+          if lnum >= min_lnum and lnum <= max_lnum then
+            local signs_config = config.signs_staged
+            local symbol = signs_config[hunk.type] and signs_config[hunk.type].text or '│'
+            local hl_name = hunk.type:sub(1, 1):upper() .. hunk.type:sub(2)
+            local hl_group = 'GitSignsStaged' .. hl_name
+            return '%#' .. hl_group .. '#' .. symbol .. '%*'
+          end
+        end
+      end
+    end
+  end
+  
+  -- Check unstaged hunks
   local gitsigns = require('gitsigns')
-  
-  -- Get hunks from gitsigns (both staged and unstaged)
   local hunks = gitsigns.get_hunks(bufnr)
-  
   if not hunks then
-    return " "  -- Return padding space if no hunks
+    return " "
   end
 
   for _, hunk in ipairs(hunks) do
-    local min_lnum = math.max(1, hunk.added.start)
-    local max_lnum = math.max(1, hunk.added.start + math.max(0, hunk.added.count - 1))
+    local min_lnum = hunk.added.start
+    local max_lnum = hunk.added.start + math.max(0, hunk.added.count - 1)
 
     if lnum >= min_lnum and lnum <= max_lnum then
-      local symbol = M.config.gitsigns.signs[hunk.type] or '│'
-      
-      -- Determine if this hunk is staged
-      local is_staged = _G.is_line_staged(lnum, bufnr)
-      
-      -- Map hunk type to gitsigns highlight group
+      local signs_config = config.signs
+      local symbol = signs_config[hunk.type] and signs_config[hunk.type].text or '│'
       local hl_name = hunk.type:sub(1, 1):upper() .. hunk.type:sub(2)
-      
-      -- Use staged highlight group if available and hunk is staged
       local hl_group = 'GitSigns' .. hl_name
-      if is_staged then
-        hl_group = 'GitSignsStaged' .. hl_name
-      end
-      
-      -- Return symbol with color using %# syntax
       return '%#' .. hl_group .. '#' .. symbol .. '%*'
     end
   end
 
-  -- Return padding space if line has no git changes
   return " "
 end
 
@@ -294,7 +280,7 @@ function M.enable_line_numbers()
   end
 
   for index, label in ipairs(M.config.labels) do
-    if label ~= "" then -- lksdjfkls
+    if label ~= "" then
       vim.keymap.set({ 'n', 'v', 'o' }, label .. M.config.up_key, index .. 'k', { noremap = true })
       vim.keymap.set({ 'n', 'v', 'o' }, label .. M.config.down_key, index .. 'j', { noremap = true })
     end
@@ -316,12 +302,9 @@ function M.disable_line_numbers()
      end
    end
 
-
    enabled = false
    update_status_column()
 end
-
-
 
 function create_auto_commands()
     local group = vim.api.nvim_create_augroup("ComfyLineNumbers", { clear = true })
@@ -358,52 +341,49 @@ function M.setup(config)
      vim.schedule(disable_gitsigns_signcolumn)
    end
 
-  vim.api.nvim_create_user_command(
-    'ComfyLineNumbers',
-    function(args)
-      if args.args == "enable" then
-        M.enable_line_numbers()
-      elseif args.args == "disable" then
-        M.disable_line_numbers()
-      elseif args.args == "toggle" then
-        if enabled then
-          M.disable_line_numbers()
-        else
-          M.enable_line_numbers()
-        end
-      else
-        print("Invalid argument.")
-      end
-    end,
-    { nargs = 1 }
-  )
+   vim.api.nvim_create_user_command(
+     'ComfyLineNumbers',
+     function(args)
+       if args.args == "enable" then
+         M.enable_line_numbers()
+       elseif args.args == "disable" then
+         M.disable_line_numbers()
+       elseif args.args == "toggle" then
+         if enabled then
+           M.disable_line_numbers()
+         else
+           M.enable_line_numbers()
+         end
+       else
+         print("Invalid argument.")
+       end
+     end,
+     { nargs = 1 }
+   )
+
+   vim.api.nvim_create_user_command(
+     'ComfyDebug',
+     function()
+       local bufnr = vim.api.nvim_get_current_buf()
+       
+       if not package.loaded.gitsigns then
+         vim.notify("Gitsigns not loaded", vim.log.levels.WARN)
+         return
+       end
+       
+       local cache = require('gitsigns.cache').cache
+       local hunks = require('gitsigns').get_hunks(bufnr)
+       local hunks_staged = cache[bufnr] and cache[bufnr].hunks_staged or {}
+       
+       vim.notify("Hunks (unstaged): " .. #(hunks or {}), vim.log.levels.INFO)
+       vim.notify("Hunks (staged): " .. #hunks_staged, vim.log.levels.INFO)
+     end,
+     { nargs = 0 }
+   )
 
   vim.opt.relativenumber = true
   create_auto_commands()
   M.enable_line_numbers()
 end
---example of statuscolumnwithcolros!
--- vim.opt.statuscolumn = "%!v:lua.StatusColumn()"
-
--- -- Simple test: 3 parts with different colors
--- function _G.StatusColumn()
---   local linenr = vim.v.lnum
---   local hl1 = "LineNr"       -- default line number color
---   local hl2 = "LineNrRed"    -- odd line number color
---   local hl3 = "LineNrBlue"   -- fold/sign color
-
---   -- even line numbers blue, odd red, fold marker green
---   local number = string.format("%3d", linenr)
---   local part1 = "%#" .. hl1 .. "#" .. "│"       -- gutter symbol
---   local part2 = "%#" .. ((linenr % 2 == 0) and hl3 or hl2) .. "#" .. number
---   local part3 = "%#LineNrGreen#" .. " ▶"        -- dummy fold marker
-
---   return part1 .. part2 .. part3
--- end
-
--- -- Define colors
--- vim.cmd("highlight LineNrRed guifg=#ff5f87")
--- vim.cmd("highlight LineNrBlue guifg=#5fd7ff")
--- vim.cmd("highlight LineNrGreen guifg=#87ff87")
 
 return M
