@@ -128,6 +128,44 @@ end
 
 
 
+-- Check if a line is in a staged hunk using gitsigns internal cache
+_G.is_line_staged = function(lnum, bufnr)
+  -- Try to access gitsigns internal cache to get staged hunks
+  local ok, result = pcall(function()
+    -- Get the gitsigns manager to access internal cache
+    local manager = require('gitsigns.manager')
+    local cache = manager.cache
+    
+    if not cache or not cache[bufnr] then
+      return false
+    end
+    
+    local cache_entry = cache[bufnr]
+    local hunks_staged = cache_entry.hunks_staged
+    
+    if not hunks_staged then
+      return false
+    end
+    
+    -- Check if line is in any staged hunk
+    for _, hunk in ipairs(hunks_staged) do
+      local min_lnum = math.max(1, hunk.added.start)
+      local max_lnum = math.max(1, hunk.added.start + math.max(0, hunk.added.count - 1))
+      if lnum >= min_lnum and lnum <= max_lnum then
+        return true
+      end
+    end
+    
+    return false
+  end)
+  
+  if ok then
+    return result
+  end
+  
+  return false
+end
+
 -- Get the gitsign symbol for a line with proper coloring (for statuscolumn display)
 _G.get_gitsign_sign = function(lnum)
   if not M.config.gitsigns.enabled or not package.loaded.gitsigns then
@@ -151,9 +189,17 @@ _G.get_gitsign_sign = function(lnum)
     if lnum >= min_lnum and lnum <= max_lnum then
       local symbol = M.config.gitsigns.signs[hunk.type] or '│'
       
+      -- Determine if this hunk is staged
+      local is_staged = _G.is_line_staged(lnum, bufnr)
+      
       -- Map hunk type to gitsigns highlight group
       local hl_name = hunk.type:sub(1, 1):upper() .. hunk.type:sub(2)
+      
+      -- Use staged highlight group if available and hunk is staged
       local hl_group = 'GitSigns' .. hl_name
+      if is_staged then
+        hl_group = 'GitSignsStaged' .. hl_name
+      end
       
       -- Return symbol with color using %# syntax
       return '%#' .. hl_group .. '#' .. symbol .. '%*'
@@ -278,23 +324,23 @@ end
 
 
 function create_auto_commands()
-   local group = vim.api.nvim_create_augroup("ComfyLineNumbers", { clear = true })
+    local group = vim.api.nvim_create_augroup("ComfyLineNumbers", { clear = true })
 
-   vim.api.nvim_create_autocmd({ "WinNew", "BufWinEnter", "BufEnter", "TermOpen", "InsertEnter", "InsertLeave" }, {
-     group = group,
-     pattern = "*",
-     callback = update_status_column
-   })
+    vim.api.nvim_create_autocmd({ "WinNew", "BufWinEnter", "BufEnter", "TermOpen", "InsertEnter", "InsertLeave" }, {
+      group = group,
+      pattern = "*",
+      callback = update_status_column
+    })
 
-       -- Integrate with gitsigns if available
-       -- This ensures statuscolumn updates when gitsigns data changes
-       if M.config.gitsigns.enabled then
-         vim.api.nvim_create_autocmd("User", {
-           group = group,
-           pattern = "GitSignsUpdate",
-           callback = update_status_column
-         })
-       end
+         -- Integrate with gitsigns if available
+         -- This ensures statuscolumn updates when gitsigns data changes
+         if M.config.gitsigns.enabled then
+           vim.api.nvim_create_autocmd("User", {
+             group = group,
+             pattern = "GitSignsUpdate",
+             callback = update_status_column
+           })
+         end
 end
 
 -- Disable gitsigns native sign column to avoid duplicates in statuscolumn
