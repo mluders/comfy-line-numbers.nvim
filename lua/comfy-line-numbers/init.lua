@@ -101,8 +101,8 @@ local M = {
       signs = {
         add = '┃',
         change = '┃',
-        delete = '_',
-        topdelete = '‾',
+        delete = '▁',
+        topdelete = '▔',
         changedelete = '~',
         untracked = '┆',
       },
@@ -110,9 +110,10 @@ local M = {
       signs_staged = {
         add = '┃',
         change = '┃',
-        delete = '_',
-        topdelete = '‾',
+        delete = '▁',
+        topdelete = '▔',
         changedelete = '~',
+        untracked = '┆',
       }
     }
   }
@@ -134,8 +135,11 @@ _G.get_gitsign_sign = function(lnum)
   end
 
   local bufnr = vim.api.nvim_get_current_buf()
-  local hunks = require('gitsigns').get_hunks(bufnr)
-
+  local gitsigns = require('gitsigns')
+  
+  -- Get hunks from gitsigns (both staged and unstaged)
+  local hunks = gitsigns.get_hunks(bufnr)
+  
   if not hunks then
     return " "  -- Return padding space if no hunks
   end
@@ -162,26 +166,21 @@ end
 
 -- StatusColumn function that builds the entire column with colors
 _G.StatusColumn = function()
-  local lnum = vim.v.lnum
-  local relnum = vim.v.relnum
-  local virtnum = vim.v.virtnum
-  
-  -- Skip for virtual lines
-  if virtnum > 0 then
+  if vim.v.virtnum > 0 then
     return ""
   end
   
   -- Get diagnostic signs
-  local diag_sign = "%s"
+  local diag = "%s"
   
-  -- Get line number with padding
-  local line_label = _G.get_label(lnum, relnum)
+  -- Get line number
+  local num = _G.get_label(vim.v.lnum, vim.v.relnum)
   
   -- Get gitsign with color
-  local gitsign = _G.get_gitsign_sign(lnum)
+  local git = _G.get_gitsign_sign(vim.v.lnum)
   
-  -- Format: Diag | LineNumber | GitSign
-  return diag_sign .. "%=" .. line_label .. " " .. gitsign
+  -- Format: Diag | Number | GitSign
+  return diag .. "%=" .. num .. " " .. git
 end
 
 -- Defined on the global namespace to be used in Vimscript below.
