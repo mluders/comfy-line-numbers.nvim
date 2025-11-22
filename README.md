@@ -114,6 +114,15 @@ end)
 If you where to add text into the statuscolumn, prefer adding it to data.num and don't forget to take that into account when setting
 `min_numberwidth`, otherwise the statuscolumn might shift when the line number changes.
 
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `:ComfyLineNumbers enable` | Enable comfy line numbers |
+| `:ComfyLineNumbers disable` | Disable comfy line numbers |
+| `:ComfyLineNumbers toggle` | Toggle comfy line numbers on/off |
+| `:ComfyLineNumbers toggle_signs` | Toggle git signs display |
+
 ## Testing
 
 The specs use [plenary.nvim tests](https://github.com/nvim-lua/plenary.nvim/blob/master/TESTS_README.md).
