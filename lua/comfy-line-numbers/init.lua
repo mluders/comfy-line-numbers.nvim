@@ -1,45 +1,33 @@
-local DEFAULT_LABELS = {
-      '','1','','2','','3','','4','','5','','11','','12','','13','','14','','15','','21','','22','','23','','24','','25','','31','','32','','33','','34','','35','','41','','42','','43','','44','','45','','51',
-      '','52', '', '53', '', '54', '', '55', '', '111', '', '112', '', '113', '', '114','115','121','122','123','124','125',"211","212","213","214","221","222","223","224","231","232","233","234","241","242","243","244","311","312","313","314","321","322","323","324","331","332","333","334","341","342","343","344"
-}
+local DEFAULT_LABELS = { "1", "2", "3", "4", "5", "11", "12", "13", "14", "15", "21", "22", "23", "24", "25", "31", "32", "33", "34", "35", "41", "42", "43", "44", "45", "51", "52", "53", "54", "55", "111", "112", "113", "114", "115", "121", "122", "123", "124", "125", "131", "132", "133", "134", "135", "141", "142", "143", "144", "145", "151", "152", "153", "154", "155", "211", "212", "213", "214", "215", "221", "222", "223", "224", "225", "231", "232", "233", "234", "235", "241", "242", "243", "244", "245", "251", "252", "253", "254", "255" }
 
 local hooks = {}
 
----@alias snacks.statuscolumn.Component "mark"|"sign"|"fold"|"git"
----@alias snacks.statuscolumn.Components snacks.statuscolumn.Component[]|fun(win:number,buf:number,lnum:number):snacks.statuscolumn.Component[]
----@alias snacks.statuscolumn.Wanted table<snacks.statuscolumn.Component, boolean>
-
----@class snacks.statuscolumn.Config
----@field left snacks.statuscolumn.Components
----@field right snacks.statuscolumn.Components
----@field enabled? boolean
-local defaults = {
-  left = { "mark", "sign" }, -- priority of signs on the left (high to low)
-  right = { "fold", "git" }, -- priority of signs on the right (high to low)
-  folds = {
-    open = false, -- show open fold icons
-    git_hl = false, -- use Git Signs hl for fold icons
-  },
-  git = {
-    -- patterns to match Git signs
-    patterns = { "GitSign", "MiniDiffSign" },
-  },
-  refresh = 50, -- refresh at most every 50ms
-  labels = DEFAULT_LABELS,
-  up_key = 'k',
-  down_key = 'j',
+local M = {
+  config = {
+    -- Snacks configs
+    left = { "mark", "sign" }, -- priority of signs on the left (high to low)
+    right = { "fold", "git" }, -- priority of signs on the right (high to low)
+    folds = {
+      open = false, -- show open fold icons
+      git_hl = false, -- use Git Signs hl for fold icons
+    },
+    git = {
+      -- patterns to match Git signs
+      patterns = { "GitSign", "MiniDiffSign" },
+    },
+    refresh = 50, -- refresh at most every 50ms
+    -- comfy-line-numbers configs
+    labels = DEFAULT_LABELS,
+    _jump_once_to = {}, -- for internal use (dynamic labels for single jump)
+    up_key = 'k',
+    down_key = 'j',
+  }
 }
 
-
----@class snacks.statuscolumn
----@overload fun(): string
-local M = setmetatable({}, {
-  __call = function(t)
-    return t.get()
-  end,
-})
-
-enabled = false
+function M.setup(config)
+  M.config = vim.tbl_deep_extend("force", M.config, config or {})
+  vim.schedule(M._setup)
+end
 
 ---@class snacks.statuscolumn.FoldInfo
 ---@field start number Line number where deepest fold starts
@@ -102,52 +90,91 @@ local first_visible_relnum_bottom = {} ---@type table<number,number>
 
 local did_setup = false
 
-local config = defaults
-
-
-
-function M.enable_line_numbers()
-  if enabled then
-    return
-  end
-  for index, label in ipairs(config.labels) do
-    if type(label) == "string" and label ~= "" then
-      vim.keymap.set({ 'n', 'v', 'o' }, label .. config.up_key, index .. 'k', { noremap = true })
-      vim.keymap.set({ 'n', 'v', 'o' }, label .. config.down_key, index .. 'j', { noremap = true })
-    end
-  end
-  enabled = true
-end
-
-function M.disable_line_numbers()
-   if not enabled then
-     return
-   end
-    for index, label in ipairs(config.labels) do
-      if type(label) == "string" and label ~= "" then
-        vim.keymap.del({ 'n', 'v', 'o' }, label .. config.up_key)
-        vim.keymap.del({ 'n', 'v', 'o' }, label .. config.down_key)
-      end
-    end
-   enabled = false
-end
-
-function M.setup()
+function M._setup()
   if did_setup then
     return
   end
   did_setup = true
   local timer = assert((vim.uv or vim.loop).new_timer())
+  local config = M.config
   timer:start(config.refresh, config.refresh, function()
     sign_cache = {}
     cache = {}
   end)
-  M.enable_line_numbers()
+
+  vim.o.statuscolumn = [[%!v:lua.require'comfy-line-numbers'.get()]]
+  vim.opt.relativenumber = true
+
+  for index, label in ipairs(M.config.labels) do
+    if type(label) == "string" and label ~= "" then
+      vim.keymap.set({ 'n', 'v', 'o' }, label .. M.config.up_key, function() M.jump_to_line("up", label) end, { noremap = true })
+      vim.keymap.set({ 'n', 'v', 'o' }, label .. M.config.down_key, function() M.jump_to_line("down", label) end, { noremap = true })
+    end
+  end
+
+end
+
+local function move_cursor(direction, amount)
+  local win = vim.api.nvim_get_current_win()
+  local pos = vim.api.nvim_win_get_cursor(win)
+
+  -- ensure amount is positive
+  amount = math.abs(amount)
+
+  local row = pos[1]
+
+  if direction == "down" then
+    row = row + amount
+  elseif direction == "up" then
+    row = row - amount
+  end
+
+  -- keep row >= 1
+  if row < 1 then row = 1 end
+
+  vim.api.nvim_win_set_cursor(win, { row, pos[2] })
+end
+
+function M.add_unique_value(key, value)
+  if key == "" then
+    return
+  end
+  for k, v in pairs(M.config._jump_once_to) do
+    if v == value then
+      M.config._jump_once_to[k] = nil
+    end
+  end
+  M.config._jump_once_to[key] = value
+end
+
+function M.jump_to_line(direction, label)
+  local win = vim.api.nvim_get_current_win()
+  local pos = vim.api.nvim_win_get_cursor(win)
+
+  if not vim.wo[win].relativenumber then
+    move_cursor(direction, label)
+    return
+  end
+
+  local has_jump = M.config._jump_once_to[label]
+  if has_jump then
+      vim.api.nvim_win_set_cursor(win, { has_jump, pos[2] })
+      M.config._jump_once_to[label] = nil
+      return
+  end
+
+  for index, lbl in ipairs(M.config.labels) do
+    if lbl == label then
+      move_cursor(direction, index)
+      return
+    end
+  end
 end
 
 ---@private
 ---@param name string
 function M.is_git_sign(name)
+  local config = M.config
   for _, pattern in ipairs(config.git.patterns) do
     if name:find(pattern) then
       return true
@@ -234,6 +261,7 @@ function M.line_signs(win, buf, lnum, wanted)
 
   -- Get fold signs
   if wanted.fold then
+    local config = M.config
     local info = fold_info(win, lnum)
     if info and info.level > 0 then
       if info.lines > 0 then
@@ -270,7 +298,7 @@ end
 ---@return string
 function M._get()
   if not did_setup then
-    M.setup()
+    M._setup()
   end
   local win = vim.g.statusline_winid
   local nu = vim.wo[win].number
@@ -278,6 +306,7 @@ function M._get()
   local show_signs = vim.v.virtnum == 0 and vim.wo[win].signcolumn ~= "no"
   local show_folds = vim.v.virtnum == 0 and vim.wo[win].foldcolumn ~= "0"
   local buf = vim.api.nvim_win_get_buf(win)
+  local config = M.config
   local left_c = type(config.left) == "function" and config.left(win, buf, vim.v.lnum) or config.left --[[@as snacks.statuscolumn.Component[] ]]
   local right_c = type(config.right) == "function" and config.right(win, buf, vim.v.lnum) or config.right --[[@as snacks.statuscolumn.Component[] ]]
 
@@ -319,7 +348,7 @@ function M._get()
             last_visible_relnum_top[win] = last_visible_relnum_top[win] + 1
           end
           num = config.labels[last_visible_relnum_top[win]]
-          vim.schedule(function()vim.keymap.set({ 'n', 'v', 'o' }, num .. config.up_key, lnum .. 'G', { noremap = true }) end)
+          M.add_unique_value(num, lnum)
         end
         if lnum > vim.fn.line('.') then
           last_visible_relnum_bottom[win] = (last_visible_relnum_bottom[win] or 0) + 1
@@ -327,7 +356,7 @@ function M._get()
             last_visible_relnum_bottom[win] = last_visible_relnum_bottom[win] + 1
           end
           num = config.labels[last_visible_relnum_bottom[win]]
-          vim.schedule(function() vim.keymap.set({ 'n', 'v', 'o' }, num .. config.up_key, lnum .. 'G', { noremap = true }) end)
+          M.add_unique_value(num, lnum)
         end
       end
     else
@@ -406,7 +435,5 @@ function M.click_fold()
   end)
 end
 
-vim.wo.numberwidth = 4
-vim.o.statuscolumn = [[%!v:lua.require'comfy-line-numbers'.get()]]
 
 return M
