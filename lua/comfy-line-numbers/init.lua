@@ -26,7 +26,8 @@ local M = {
 
 function M.setup(config)
   M.config = vim.tbl_deep_extend("force", M.config, config or {})
-  vim.schedule(M._setup)
+  vim.opt.relativenumber = true
+  vim.o.statuscolumn = [[%!v:lua.require'comfy-line-numbers'.get()]]
 end
 
 ---@class snacks.statuscolumn.FoldInfo
@@ -101,9 +102,6 @@ function M._setup()
     sign_cache = {}
     cache = {}
   end)
-
-  vim.o.statuscolumn = [[%!v:lua.require'comfy-line-numbers'.get()]]
-  vim.opt.relativenumber = true
 
   for index, label in ipairs(M.config.labels) do
     if type(label) == "string" and label ~= "" then
