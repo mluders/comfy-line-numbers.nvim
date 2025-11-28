@@ -1,0 +1,127 @@
+==============================================================================
+                                              *comfy-line-numbers.nvim*
+
+A Neovim plugin that makes vertical motions more comfortable.
+
+==============================================================================
+PROBLEM                                            *comfy-line-numbers-problem*
+
+Using relative line numbers for vertical movement requires right-hand fingers
+to jump between numbers and letters:
+  * `6j`
+  * `19k`
+  * `18j`
+
+This results in excessive hand movement and fatigue.
+
+==============================================================================
+SOLUTION                                        *comfy-line-numbers-solution*
+
+Represent line numbers using left-hand digits only:
+
+  1, 2, 3, 4, 5,
+  11, 12, 13, 14, 15,
+  21, 22, ..., 55
+
+This lets your left hand focus on digits, while your right hand focuses on
+`j` and `k`. Less movement. More comfort.
+
+==============================================================================
+HOW IT WORKS                                      *comfy-line-numbers-works*
+
+1. Relative line numbers are displayed in status column (with right-hand 
+   digits omitted).
+
+2. Vertical motions are re-mapped to their original meanings:
+   * `11j` becomes `6j`
+   * `34k` becomes `19k`
+   * `33j` becomes `18j`
+
+==============================================================================
+INSTALLATION                                  *comfy-line-numbers-install*
+
+Using lazy.nvim:
+>
+  return {
+    'mluders/comfy-line-numbers.nvim'
+  }
+<
+
+==============================================================================
+CONFIGURATION                                 *comfy-line-numbers-config*
+
+Basic setup:
+>
+  require('comfy-line-numbers').setup({
+    labels = {
+      '1', '2', '3', '4', '5', '11', '12', '13', '14', '15', '21', '22', '23',
+      '24', '25', '31', '32', '33', '34', '35', '41', '42', '43', '44', '45',
+      '51', '52', '53', '54', '55', '111', '112', '113', '114', '115', '121',
+      '122', '123', '124', '125', '131', '132', '133', '134', '135', '141',
+      '142', '143', '144', '145', '151', '152', '153', '154', '155', '211',
+      '212', '213', '214', '215', '221', '222', '223', '224', '225', '231',
+      '232', '233', '234', '235', '241', '242', '243', '244', '245', '251',
+      '252', '253', '254', '255',
+    },
+    up_key = 'k',
+    down_key = 'j',
+    min_numberwidth = 3,
+    gitsigns = {
+      enabled = true,
+    },
+    hidden_file_types = { 'undotree' },
+    hidden_buffer_types = { 'terminal', 'nofile' }
+  })
+<
+
+Options:
+
+  labels                Custom line number labels
+  up_key                Key for upward motion (default: 'k')
+  down_key              Key for downward motion (default: 'j')
+  min_numberwidth       Minimum width of statuscolumn (default: 3)
+  gitsigns.enabled      Enable git signs integration (default: true)
+  hidden_file_types     File types to hide line numbers
+  hidden_buffer_types   Buffer types to hide line numbers
+
+==============================================================================
+COMMANDS                                      *comfy-line-numbers-commands*
+
+:ComfyLineNumbers enable
+  Enable comfy line numbers
+
+:ComfyLineNumbers disable
+  Disable comfy line numbers
+
+:ComfyLineNumbers toggle
+  Toggle comfy line numbers on/off
+
+:ComfyLineNumbers toggle_signs
+  Toggle git signs display
+
+==============================================================================
+HOOKS                                            *comfy-line-numbers-hooks*
+
+Register custom hooks to modify the statuscolumn:
+>
+  local comfy = require('comfy-line-numbers')
+  
+  comfy.register_line_hook('my_hook', function(lnum, data)
+    -- data contains: { num = <string>, diag = <string>, git = <string> }
+    if lnum == 42 then
+      local stripped = data.num:gsub("^%s+", "")
+      data.num = '%#ErrorMsg#' .. stripped .. '%*'
+    end
+    return data
+  end)
+<
+
+Hook parameters:
+  lnum    Absolute line number
+  data    Table with num, diag, and git fields
+
+When adding text to data.num, account for it in min_numberwidth to prevent
+statuscolumn shifting.
+
+==============================================================================
+vim:tw=78:ts=2:ft=help:norl:
