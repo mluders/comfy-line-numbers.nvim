@@ -158,10 +158,26 @@ function M.enable_line_numbers()
     return
   end
 
-  for index, label in ipairs(M.config.labels) do
-    vim.keymap.set({ 'n', 'v', 'o' }, label .. M.config.up_key, index .. 'k', { noremap = true })
-    vim.keymap.set({ 'n', 'v', 'o' }, label .. M.config.down_key, index .. 'j', { noremap = true })
+  local translate_motion = function(send_key)
+    local jump_dist = vim.v.count1
+    local lookup = M.jumps[tostring(jump_dist)]
+    if lookup ~= nil then
+      jump_dist = lookup
+    end
+    local prefix = tostring(jump_dist)
+    -- Operator pending mode appears to reset at the start of nvim_feedkeys(), so we need to forward it.
+    if string.find(vim.api.nvim_get_mode().mode, 'o') ~= nil then
+      prefix = vim.v.operator .. prefix
+    end
+    vim.api.nvim_feedkeys(prefix .. send_key, 'n', false)
   end
+
+  vim.keymap.set({'n', 'v', 'o'}, M.config.down_key, function()
+    translate_motion(M.config.down_key)
+  end, { noremap = true })
+  vim.keymap.set({'n', 'v', 'o'}, M.config.up_key, function()
+    translate_motion(M.config.up_key)
+  end, { noremap = true })
 
   enabled = true
   update_status_column()
@@ -172,11 +188,8 @@ function M.disable_line_numbers()
     return
   end
 
-  for index, label in ipairs(M.config.labels) do
-    vim.keymap.del({ 'n', 'v', 'o' }, label .. M.config.up_key)
-    vim.keymap.del({ 'n', 'v', 'o' }, label .. M.config.down_key)
-  end
-
+  vim.keymap.del({ 'n', 'v', 'o' }, M.config.up_key)
+  vim.keymap.del({ 'n', 'v', 'o' }, M.config.down_key)
 
   enabled = false
   update_status_column()
@@ -194,6 +207,11 @@ end
 
 function M.setup(config)
   M.config = vim.tbl_deep_extend("force", M.config, config or {})
+
+  M.jumps = {}
+  for index, label in ipairs(M.config.labels) do
+    M.jumps[label] = index
+  end
 
   vim.api.nvim_create_user_command(
     'ComfyLineNumbers',
