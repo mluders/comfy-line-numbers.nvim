@@ -63,24 +63,22 @@ return {
 
 ```lua
 local function generate_labels(max_digit, max_length)
-   local labels = {}
+  local labels = {}
 
-   local function dfs(prefix, depth)
-      if depth > 0 then
-         labels[#labels + 1] = prefix
+  for len = 1, max_length do
+    local function dfs(prefix, depth)
+      if depth == len then
+        labels[#labels + 1] = prefix
+        return
       end
-
-      if depth == max_length then
-         return
+      for d = 1, max_digit do
+        dfs(prefix .. d, depth + 1)
       end
+    end
+    dfs("", 0)
+  end
 
-      for i = 1, max_digit do
-         dfs(prefix .. i, depth + 1)
-      end
-   end
-
-   dfs("", 0)
-   return labels
+  return labels
 end
 
 require('comfy-line-numbers').setup({
