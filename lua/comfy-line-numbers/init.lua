@@ -137,7 +137,7 @@ function update_status_column()
 
     if should_hide_numbers(filetype, buftype) then
       vim.api.nvim_win_call(win, function()
-        vim.opt.statuscolumn = ''
+        vim.o.statuscolumn = ''
       end)
     else
       vim.api.nvim_win_call(win, function()
@@ -147,7 +147,7 @@ function update_status_column()
         local width = math.max(4, #tostring(total_lines))
         vim.wo[win].numberwidth = width
 
-        vim.opt.statuscolumn = '%=%s%=%{v:virtnum > 0 ? "" : v:lua.get_label(v:lnum, v:relnum)} '
+        vim.o.statuscolumn = '%=%s%=%{v:virtnum > 0 ? "" : v:lua.get_label(v:lnum, v:relnum)} '
       end)
     end
   end
@@ -215,7 +215,7 @@ function M.setup(config)
     { nargs = 1 }
   )
 
-  vim.opt.relativenumber = true
+  vim.o.relativenumber = true
   create_auto_commands()
   M.enable_line_numbers()
 end
