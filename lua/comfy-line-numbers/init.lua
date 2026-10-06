@@ -147,7 +147,7 @@ function update_status_column()
         local width = math.max(4, #tostring(total_lines))
         vim.wo[win].numberwidth = width
 
-        vim.opt.statuscolumn = '%=%s%=%{v:virtnum > 0 ? "" : v:lua.get_label(v:lnum, v:relnum)} '
+        vim.opt.statuscolumn = '%=%s%=%{v:virtnum != 0 ? "" : v:lua.get_label(v:lnum, v:relnum)} '
       end)
     end
   end
